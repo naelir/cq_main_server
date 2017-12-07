@@ -1,0 +1,6 @@
+<MESSAGE ID="1"  TEXT="под 5000 ТСИ"   GPPMAX="5000" />
+<MESSAGE ID="2"  TEXT="под 6000 ТСИ"   GPPMAX="6000" />
+<MESSAGE ID="3"  TEXT="под 7000 ТСИ"   GPPMAX="7000" />
+<MESSAGE ID="4"  TEXT="над 5000 ТСИ"    GPPMIN="5000" />
+<MESSAGE ID="5"  TEXT="над 6000 ТСИ"    GPPMIN="6000" />
+<MESSAGE ID="6"  TEXT="над 7000 ТСИ"    GPPMIN="7000" />

@@ -1,0 +1,16 @@
+<SERVER XSOCKETPORT="2002" SERVERADDRESS="localhost"/>
+<LANG FILE="client/lang7.swf" LANGID="fr" JSON="dat/lang.json" />
+<EXTRACONFIG URL="clientquery_sysconf.php" />
+<LOAD2 PREFILE="client/nopreloader.swf" />
+<PRELOADER EXTRQ="aagetpreloader.php" FILE="client/nopreloader.swf" MINTIME="10000" TOTALBYTES="4000000" STOP="1" />
+<SOUNDS FILE="client/sounds.swf" QGFILE="client/sounds_mini.swf" />
+<SYSCODE FILE="client/syscode.swf" />
+<xSTUPIDO FILE="stupido.swf" />
+<WAITHALL FILE="client/waithall.swf" QGFILE="client/waithall_guest.swf" />
+<MAP FILE="client/map_all.swf" />
+<xTESTGAMEENDMOV FILE="testgameend.swf" />
+<SETTINGS NOSEPROOMS="0" CLIENTTYPE="CQ_COM" RANKSYS="NORMAL" NOMAILBUTTONS="1" FBSHARE="0" NOHALLELUJA="1"/>
+<xDATAQUERY FRIENDLIST="http://192.168.1.1/s/clientquery_friendlist.php" />
+<EXTRACONFIG URL="banner/promobox.xml" />
+<xMAPADVERT GAMEENDMOV="gameend_advert.swf" />
+<TOURNAMENT PATH="" WHBOX="client/tournament_promobox.swf" MAIN="client/tournament_main.swf" STATEMOV="client/tournament_chatp.swf" />
