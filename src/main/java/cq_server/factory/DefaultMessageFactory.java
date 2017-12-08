@@ -17,8 +17,8 @@ import cq_server.model.BaseChannel;
 import cq_server.model.BaseEvent;
 import cq_server.model.NetworkMessage;
 
-public class MessageFactory implements IMessageFactory {
-	private static final Logger LOG = LoggerFactory.getLogger(MessageFactory.class);
+public class DefaultMessageFactory implements IMessageFactory {
+	private static final Logger LOG = LoggerFactory.getLogger(DefaultMessageFactory.class);
 
 	private final JAXBContext cmdContext;
 
@@ -26,7 +26,7 @@ public class MessageFactory implements IMessageFactory {
 
 	private final JAXBContext outMessagesContext;
 
-	public MessageFactory(
+	public DefaultMessageFactory(
 			final JAXBContext cmdContext,
 			final JAXBContext eventContext,
 			final JAXBContext outMessagesContext) {
@@ -38,10 +38,13 @@ public class MessageFactory implements IMessageFactory {
 	@Override
 	public NetworkMessage createInputNetworkMessage(final String message) {
 		final String[] pair = message.split("\r\n");
-		LOG.debug("incoming message: channel: {}, event: {}", pair[0], pair[1]);
-		final BaseChannel channel = this.getCmdChannel(pair);
-		final BaseEvent event = this.getEvent(pair);
-		return new NetworkMessage(channel, event);
+		if (pair.length == 2) {
+			LOG.debug("incoming message: channel: {}, event: {}", pair[0], pair[1]);
+			final BaseChannel channel = this.getCmdChannel(pair[0]);
+			final BaseEvent event = this.getEvent(pair[1]);
+			return new NetworkMessage(channel, event);
+		} else
+			throw new RuntimeException("invalid message:" + message);
 	}
 
 	@Override
@@ -57,26 +60,25 @@ public class MessageFactory implements IMessageFactory {
 			LOG.debug("outgoing message: {}", message);
 			return message;
 		} catch (final JAXBException e) {
-			LOG.error("{}", data);
-			LOG.error("{}", e);
+			LOG.error("{}:", data, e);
 			throw new RuntimeException(e);
 		}
 	}
 
-	private BaseChannel getCmdChannel(final String[] pair) {
+	private BaseChannel getCmdChannel(final String channel) {
 		try {
-			return (BaseChannel) this.cmdContext.createUnmarshaller().unmarshal(new StringReader(pair[0]));
+			return (BaseChannel) this.cmdContext.createUnmarshaller().unmarshal(new StringReader(channel));
 		} catch (final JAXBException e) {
-			LOG.error("{}", e);
+			LOG.error("invalid channel", e);
 			return new CmdChannel(0, 0, 0);
 		}
 	}
 
-	private BaseEvent getEvent(final String[] pair) {
+	private BaseEvent getEvent(final String event) {
 		try {
-			return (BaseEvent) this.eventContext.createUnmarshaller().unmarshal(new StringReader(pair[1]));
+			return (BaseEvent) this.eventContext.createUnmarshaller().unmarshal(new StringReader(event));
 		} catch (final JAXBException e) {
-			LOG.error("{}", e);
+			LOG.error("invalid event", e);
 			return new DefaultEvent();
 		}
 	}

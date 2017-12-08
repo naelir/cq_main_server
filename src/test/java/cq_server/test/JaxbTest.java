@@ -2,6 +2,7 @@ package cq_server.test;
 
 import java.io.StringReader;
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.HashMap;
 
 import javax.xml.bind.JAXBContext;
@@ -12,11 +13,11 @@ import javax.xml.bind.Unmarshaller;
 import org.junit.Test;
 
 import cq_server.event.*;
+import cq_server.factory.IdFactory;
 import cq_server.game.Chat;
 import cq_server.game.GameState;
-import cq_server.game.IdFactory;
-import cq_server.game.MockPlayer;
 import cq_server.model.*;
+import cq_server.model.Player.Type;
 
 public class JaxbTest {
 	@Test
@@ -95,11 +96,11 @@ public class JaxbTest {
 			.setRules(Rules.DUEL)
 			.build(); 
 		//@formatter:on
-		marshaller.marshal(new SepRoom(new MockPlayer(1, null, ""), roomSettings), System.out);
+		marshaller.marshal(new SepRoom(1, Collections.emptyList(), Collections.emptyList(), roomSettings), System.out);
 		System.out.println();
 		final UserList userList = new UserList();
-		userList.add(new MockPlayer(1, null, ""));
-		userList.add(new MockPlayer(2, null, ""));
+		userList.add(new Player(1, Type.ROBOT, null, ""));
+		userList.add(new Player(2, Type.ROBOT, null, ""));
 		marshaller.marshal(userList, System.out);
 		System.out.println();
 		marshaller.marshal(new CmdAnswer(), System.out);
@@ -116,7 +117,7 @@ public class JaxbTest {
 				System.out);
 		System.out.println();
 		final TipInfo tipInfo = new TipInfo(0, 2);
-		tipInfo.setTipInfo(1, 8);
+		tipInfo.setTip(1, 8);
 		marshaller.marshal(tipInfo, System.out);
 		System.out.println();
 		marshaller.marshal(new GameState(), System.out);

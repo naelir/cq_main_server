@@ -3,17 +3,17 @@ package cq_server.handler;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.channels.ClosedChannelException;
-import java.util.List;
 
 import org.xsocket.MaxReadSizeExceededException;
 import org.xsocket.connection.INonBlockingConnection;
 
-import cq_server.game.BasePlayer;
+import cq_server.model.ChannelEvent;
+import cq_server.model.OutEvent;
 
-public class MockMessageHandler implements IInputMessageHandler, IOutputMessageHandler {
+public class MockMessageHandler implements IInEventHandler, IOutEventHandler {
 	@Override
-	public boolean ban(final BasePlayer player) {
-		return true;
+	public void onChannelEvent(final ChannelEvent event) {
+		// TODO Auto-generated method stub
 	}
 
 	@Override
@@ -43,7 +43,7 @@ public class MockMessageHandler implements IInputMessageHandler, IOutputMessageH
 	}
 
 	@Override
-	public boolean sendMessage(final BasePlayer player, final List<Object> data) {
-		return true;
+	public void onOutEvent(final OutEvent event) {
+		// TODO Auto-generated method stub
 	}
 }

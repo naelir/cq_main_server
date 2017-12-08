@@ -1,10 +1,8 @@
 package cq_server.factory;
 
-import cq_server.game.BasePlayer;
-import cq_server.game.Game;
+import cq_server.model.Player;
+import cq_server.model.Player.Type;
 
 public interface IPlayerFactory {
-	BasePlayer createPlayer(String hostAddress);
-
-	BasePlayer createRobot(Integer id, String name, Game game);
+	Player createPlayer(Type type, String hostAddress, String name);
 }

@@ -1,5 +1,6 @@
 package cq_server.event;
 
+import javax.validation.constraints.NotNull;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -26,20 +27,22 @@ public final class MessageEvent extends BaseEvent {
 	}
 
 	@XmlAttribute(name = "TEXT")
+	@NotNull
 	public String getMessage() {
 		return this.message;
 	}
 
 	@XmlAttribute(name = "TO")
+	@NotNull
 	public String getTo() {
 		return this.to;
 	}
 
-	public void setTo(final String to) {
-		this.to = to;
-	}
-
 	public void setMessage(final String message) {
 		this.message = message;
+	}
+
+	public void setTo(final String to) {
+		this.to = to;
 	}
 }

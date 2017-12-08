@@ -8,7 +8,8 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlRootElement(name = "QUESTION")
 @XmlAccessorType(XmlAccessType.PROPERTY)
 public final class Question {
-	private static final RawQuestion DEFAULT_QUESTION = new RawQuestion("", new String[] { "0", "1", "2", "3" }, 0);
+	private static final RawQuestion DEFAULT_QUESTION = new RawQuestion("",
+			new String[] { "0", "1", "2", "3" }, 0);
 
 	private final int allowMark;
 
@@ -28,7 +29,7 @@ public final class Question {
 		this(DEFAULT_QUESTION, new AnswerResult());
 	}
 
-	public Question(RawQuestion question, AnswerResult answerresult) {
+	public Question(final RawQuestion question, final AnswerResult answerresult) {
 		super();
 		this.answerresult = answerresult;
 		this.allowMark = 0;
@@ -41,35 +42,35 @@ public final class Question {
 
 	@XmlAttribute(name = "ALLOWMARK")
 	public int getAllowMark() {
-		return allowMark;
+		return this.allowMark;
+	}
+
+	public AnswerResult getAnswerResult() {
+		return this.answerresult;
 	}
 
 	@XmlAttribute(name = "OP1")
 	public String getOp1() {
-		return op1;
+		return this.op1;
 	}
 
 	@XmlAttribute(name = "OP2")
 	public String getOp2() {
-		return op2;
+		return this.op2;
 	}
 
 	@XmlAttribute(name = "OP3")
 	public String getOp3() {
-		return op3;
+		return this.op3;
 	}
 
 	@XmlAttribute(name = "OP4")
 	public String getOp4() {
-		return op4;
+		return this.op4;
 	}
 
 	@XmlAttribute(name = "QUESTION")
 	public String getQ() {
-		return q;
-	}
-
-	public AnswerResult getAnswerresult() {
-		return answerresult;
+		return this.q;
 	}
 }

@@ -1,5 +1,6 @@
 package cq_server.event;
 
+import javax.validation.constraints.NotNull;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -29,26 +30,29 @@ public final class ChatCloseEvent extends BaseEvent {
 	}
 
 	@XmlAttribute(name = "ACTIVECHAT")
+	@NotNull
 	public Integer getActiveChat() {
 		return this.activeChat;
 	}
 
 	@XmlAttribute(name = "ID")
+	@NotNull
 	public Integer getChatId() {
 		return this.chatId;
 	}
 
 	@XmlAttribute(name = "MSTATE")
+	@NotNull
 	public Integer getMstate() {
 		return this.mstate;
 	}
 
-	public void setChatId(final Integer chatId) {
-		this.chatId = chatId;
-	}
-
 	public void setActiveChat(final Integer activeChat) {
 		this.activeChat = activeChat;
+	}
+
+	public void setChatId(final Integer chatId) {
+		this.chatId = chatId;
 	}
 
 	public void setMstate(final Integer mstate) {

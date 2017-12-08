@@ -13,9 +13,9 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class AnswerResult {
 	private Map<Integer, Integer> answers;
 
-	private int offender;
+	private Integer offender;
 
-	private int deffender;
+	private Integer deffender;
 
 	private Integer p1;
 
@@ -23,27 +23,27 @@ public class AnswerResult {
 
 	private Integer p3;
 
-	private int good;
+	private Integer good;
 
 	private AttackStatus status;
 
-	private int players;
+	private Integer players;
 
 	public AnswerResult() {
 	}
 
-	public AnswerResult(final int good, final int offender, final int deffender, final int players) {
+	public AnswerResult(final Integer good, final Integer offender, final Integer deffender, final Integer players) {
 		super();
 		this.good = good;
 		this.offender = offender;
 		this.deffender = deffender;
 		this.players = players;
-		this.answers = new ConcurrentHashMap<>(players);
+		this.answers = new ConcurrentHashMap<>(players.intValue());
 		this.status = AttackStatus.NA;
 	}
 
 	@XmlAttribute(name = "GOOD")
-	public int getGood() {
+	public Integer getGood() {
 		return this.good;
 	}
 
@@ -66,13 +66,13 @@ public class AnswerResult {
 		return this.status;
 	}
 
-	public boolean isAnswered(final int playerId) {
+	public boolean isAnswered(final Integer playerId) {
 		return this.answers.get(playerId) != null;
 	}
 
-	public void setAnswer(final int playerId, final int answer) {
+	public void setAnswer(final Integer playerId, final Integer answer) {
 		this.answers.put(playerId, answer);
-		switch (playerId) {
+		switch (playerId.intValue()) {
 		case 1:
 			this.p1 = answer;
 			break;
@@ -85,7 +85,7 @@ public class AnswerResult {
 		default:
 			break;
 		}
-		if (this.answers.size() == this.players) {
+		if (this.answers.size() == this.players.intValue()) {
 			final Integer offenderAnswer = this.answers.get(this.offender);
 			final Integer deffenderAnswer = this.answers.get(this.deffender);
 			if (!offenderAnswer.equals(this.good) && !deffenderAnswer.equals(this.good))

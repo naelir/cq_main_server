@@ -5,7 +5,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cq_server.game.IQuestionsLoader;
+import cq_server.factory.IQuestionsLoader;
 import cq_server.model.Questions;
 import cq_server.model.RawQuestion;
 import cq_server.model.RawTip;

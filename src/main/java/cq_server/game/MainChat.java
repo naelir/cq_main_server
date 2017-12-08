@@ -1,9 +1,10 @@
 package cq_server.game;
 
 import cq_server.model.ChatMsg;
+import cq_server.model.Player;
 
 public class MainChat extends Chat {
-	public MainChat(final int id, final BasePlayer player) {
+	public MainChat(final int id, final Player player) {
 		super(id, player);
 	}
 

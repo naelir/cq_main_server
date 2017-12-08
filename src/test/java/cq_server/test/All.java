@@ -8,9 +8,9 @@ import java.util.concurrent.Future;
 import org.junit.Assert;
 import org.junit.Test;
 
-import cq_server.game.BasePlayer;
-import cq_server.game.IdFactory;
+import cq_server.factory.IdFactory;
 import cq_server.game.MainChat;
+import cq_server.model.Player;
 import cq_server.model.UserList;
  
 public class All {
@@ -19,7 +19,7 @@ public class All {
 		final IdFactory idFactory = new IdFactory();
 		final ExecutorService executorService = Executors.newFixedThreadPool(2);
 		final Future<Integer> first = executorService.submit(() -> {
-			return idFactory.createId(BasePlayer.class);
+			return idFactory.createId(Player.class);
 		});
 		final Future<Integer> second = executorService.submit(() -> {
 			return idFactory.createId(MainChat.class);

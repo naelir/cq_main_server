@@ -1,4 +1,4 @@
-package cq_server.game;
+package cq_server.factory;
 
 import java.io.IOException;
 
@@ -10,12 +10,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.ObjectMapper;
 import com.mashape.unirest.http.Unirest;
-import com.mashape.unirest.http.exceptions.UnirestException;
 
 import cq_server.model.Questions;
 import cq_server.model.RawQuestion;
 import cq_server.model.RawTip;
 
+//@formatter:off
 public class OnlineQuestionsLoader implements IQuestionsLoader {
 	private static final Logger LOG = LoggerFactory.getLogger(OnlineQuestionsLoader.class);
 
@@ -68,20 +68,19 @@ public class OnlineQuestionsLoader implements IQuestionsLoader {
 				}
 			}
 		});
-		//@formatter:off
-		try { 
+		try {
 			final long second = System.currentTimeMillis() / 1000;
 			final String timeHash = DigestUtils.md5DigestAsHex(String.valueOf(second).getBytes());
-			LOG.debug("current second: {}, current timehash: {}", second, timeHash); 
-			final HttpResponse<RawQuestion[]> questionsResponse = 
+			LOG.debug("current second: {}, current timehash: {}", second, timeHash);
+			final HttpResponse<RawQuestion[]> questionsResponse =
 					Unirest
 					.get(this.questionsApiEndpoint)
 					.header(this.userNameMd5HashHeader, this.userMd5)
 			        .header(this.timeMd5HashHeader, timeHash)
 					.asObject(RawQuestion[].class);
 			final RawQuestion[] questions = questionsResponse.getBody();
-			
-			final HttpResponse<RawTip[]> tipResponse = 
+
+			final HttpResponse<RawTip[]> tipResponse =
 					Unirest
 					.get(this.tipsApiEndpoint)
 					.header(this.userNameMd5HashHeader, this.userMd5)
@@ -89,10 +88,9 @@ public class OnlineQuestionsLoader implements IQuestionsLoader {
 			        .asObject(RawTip[].class);
 			final RawTip[] tips = tipResponse.getBody();
 			return new Questions(questions, tips);
-		} catch (final UnirestException e) {
-			LOG.error("{}", e);
+		} catch (final Exception e) {
+			LOG.error("error:", e);
 		}
-		//@formatter:on
 		return new Questions(new RawQuestion[] {}, new RawTip[] {});
 	}
 }

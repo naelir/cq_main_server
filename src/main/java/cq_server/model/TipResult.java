@@ -12,7 +12,24 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlRootElement(name = "TIPRESULT")
 @XmlAccessorType(XmlAccessType.PROPERTY)
 public class TipResult {
-	private int good;
+	private static void sort(final int answer, final List<TipAnswer> results) {
+		Collections.sort(results, new Comparator<TipAnswer>() {
+			@Override
+			public int compare(final TipAnswer o1, final TipAnswer o2) {
+				// sorts by 'trueAnswer absolute'
+				return (Math.abs(answer - o1.getAnswer()) < Math.abs(answer - o2.getAnswer())) ? -1
+						: (Math.abs(answer - o1.getAnswer()) > Math.abs(answer - o2.getAnswer())) ? 1
+								: this.doSecodaryOrderSort(o1, o2);
+			}
+
+			// If 'trueAnswer absolute' is equal sorts by 'time'
+			public int doSecodaryOrderSort(final TipAnswer o1, final TipAnswer o2) {
+				return (o1.getTime() < o2.getTime()) ? -1 : (o1.getTime() > o2.getTime()) ? 1 : 0;
+			}
+		});
+	}
+
+	private final int good;
 
 	private int second;
 
@@ -22,50 +39,33 @@ public class TipResult {
 		this(0);
 	}
 
-	public TipResult(Integer good) {
+	public TipResult(final Integer good) {
 		this.good = good;
 	}
 
 	@XmlAttribute(name = "GOOD")
 	public int getGood() {
-		return good;
+		return this.good;
 	}
 
 	@XmlAttribute(name = "SECOND")
 	public Integer getSecond() {
-		return second;
+		return this.second;
 	}
 
 	@XmlAttribute(name = "WINNER")
 	public Integer getWinner() {
-		return winner;
+		return this.winner;
 	}
 
-	public void setResults(int answer, List<TipAnswer> results) {
+	public void setResults(final int answer, final List<TipAnswer> results) {
 		sort(answer, results);
-		winner = results.get(0).getId();
-		second = results.get(1).getId();
-	}
-
-	private void sort(int answer, List<TipAnswer> results) {
-		Collections.sort(results, new Comparator<TipAnswer>() {
-			@Override
-			public int compare(TipAnswer o1, TipAnswer o2) {
-				// sorts by 'trueAnswer absolute'
-				return (Math.abs(answer - o1.getAnswer()) < Math.abs(answer - o2.getAnswer())) ? -1
-						: (Math.abs(answer - o1.getAnswer()) > Math.abs(answer - o2.getAnswer())) ? 1
-								: doSecodaryOrderSort(o1, o2);
-			}
-
-			// If 'trueAnswer absolute' is equal sorts by 'time'
-			public int doSecodaryOrderSort(TipAnswer o1, TipAnswer o2) {
-				return (o1.getTime() < o2.getTime()) ? -1 : (o1.getTime() > o2.getTime()) ? 1 : 0;
-			}
-		});
+		this.winner = results.get(0).getId();
+		this.second = results.get(1).getId();
 	}
 
 	@Override
 	public String toString() {
-		return "TipResult [good=" + good + ", second=" + second + ", winner=" + winner + "]";
+		return "TipResult [good=" + this.good + ", second=" + this.second + ", winner=" + this.winner + "]";
 	}
 }

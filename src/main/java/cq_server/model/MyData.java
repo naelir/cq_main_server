@@ -1,10 +1,6 @@
 package cq_server.model;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlTransient;
+import javax.xml.bind.annotation.*;
 
 @SuppressWarnings("unused")
 //<MYDATA NAME=\"%s\" ID=\"%d\" RIGHTS=\"%d\" JEP=\"%d\" JEPGAMES=\"%d\" VEP=\"%d\" 
@@ -36,7 +32,7 @@ public final class MyData {
 	private int face;
 
 	@XmlAttribute(name = "GAMECOUNT")
-	private int gamecount = 30;
+	private final int gamecount = 30;
 
 	@XmlAttribute(name = "GOLDS")
 	private int golds;
@@ -48,10 +44,10 @@ public final class MyData {
 	int id;
 
 	@XmlAttribute(name = "JEP")
-	private int jep = 10000;
+	private final int jep = 10000;
 
 	@XmlAttribute(name = "JEPGAMES")
-	private int jepgames = 30;
+	private final int jepgames = 30;
 
 	@XmlAttribute(name = "LOCATIONID")
 	private int locationid;
@@ -60,13 +56,13 @@ public final class MyData {
 	private String name;
 
 	@XmlAttribute(name = "SINFO")
-	private String sinfo = "";
+	private final String sinfo = "";
 
 	@XmlAttribute(name = "TOURRES")
-	private String tourres = "0,0,0,0";
+	private final String tourres = "0,0,0,0";
 
 	@XmlAttribute(name = "MTOURRES")
-	private String mtourres = "0,0,0";
+	private final String mtourres = "0,0,0";
 
 	private String pass;
 
@@ -81,25 +77,25 @@ public final class MyData {
 	private int silvers;
 
 	@XmlAttribute(name = "USERS")
-	private boolean simple = false;
+	private final boolean simple = false;
 
 	@XmlAttribute(name = "VEP")
-	private int vep;;
+	private int vep;
 
 	public MyData() {
 		this(0, "0");
 	}
 
-	public MyData(int id, String name) {
+	public MyData(final int id, final String name) {
 		this.id = id;
 		this.name = name;
 	}
 
 	public String getName() {
-		return name;
+		return this.name;
 	}
 
-	public void setName(String name) {
+	public void setName(final String name) {
 		this.name = name;
 	}
 }

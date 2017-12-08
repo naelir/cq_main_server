@@ -1,5 +1,6 @@
 package cq_server.event;
 
+import javax.validation.constraints.NotNull;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -23,6 +24,7 @@ public final class ChatMessageEvent extends BaseEvent {
 	}
 
 	@XmlAttribute(name = "MSG")
+	@NotNull
 	public String getMsg() {
 		return this.msg;
 	}

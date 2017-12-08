@@ -1,4 +1,4 @@
-package cq_server.game;
+package cq_server.factory;
 
 import cq_server.model.Questions;
 

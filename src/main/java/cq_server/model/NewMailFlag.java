@@ -9,6 +9,6 @@ public final class NewMailFlag {
 	private final int flag;
 
 	public NewMailFlag() {
-		flag = 0;
+		this.flag = 0;
 	}
 }

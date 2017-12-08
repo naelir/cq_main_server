@@ -9,6 +9,6 @@ public final class NewReg {
 	private final int regLevel;
 
 	public NewReg() {
-		regLevel = 0;
+		this.regLevel = 0;
 	}
 }

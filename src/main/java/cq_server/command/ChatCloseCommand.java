@@ -1,40 +1,23 @@
 package cq_server.command;
 
-import static cq_server.Assertions.notNull;
-
-import java.util.Arrays;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Collections;
 
 import cq_server.event.ChatCloseEvent;
-import cq_server.game.BasePlayer;
 import cq_server.game.Chat;
-import cq_server.handler.IOutputMessageHandler;
-import cq_server.model.BaseChannel;
-import cq_server.model.ChatMsg;;
+import cq_server.model.ChatMsg;
+import cq_server.model.OutEvent;
+import cq_server.model.Player;
 
-public final class ChatCloseCommand implements ICommand {
-	private final ChatCloseEvent event;
-
-	private final Map<Integer, Chat> chats;
-
-	private final AtomicBoolean isWhNeedRefresh;
-
-	private final IOutputMessageHandler outputMessageHandler;
-
-	public ChatCloseCommand(final ChatCloseEvent event, final CommandParamsBuilder builder) {
-		this.event = notNull("event", event);
-		this.chats = notNull("chats", builder.chats);
-		this.isWhNeedRefresh = notNull("isWhNeedRefresh", builder.isWhNeedRefresh);
-		this.outputMessageHandler = notNull("outputMessageHandler", builder.outputMessageHandler);
+public final class ChatCloseCommand extends BaseCommand implements ICommand<ChatCloseEvent> {
+	public ChatCloseCommand(final Builder builder) {
+		super(builder);
 	}
 
 	@Override
-	public void execute(final BasePlayer player) {
-		final Integer activeChat = this.event.getActiveChat();
-		final Integer mstate = this.event.getMstate();
-		final Integer chatId = this.event.getChatId();
-		final BaseChannel cmdChannel = player.getCmdChannel();
+	public void execute(final ChatCloseEvent event, final Player player) {
+		final Integer activeChat = event.getActiveChat();
+		final Integer mstate = event.getMstate();
+		final Integer chatId = event.getChatId();
 		player.setActiveChat(activeChat);
 		player.setMstate(mstate);
 		final Chat chat = this.chats.get(chatId);
@@ -42,7 +25,7 @@ public final class ChatCloseCommand implements ICommand {
 		if (chat.isEmpty())
 			this.chats.remove(chatId);
 		chat.addMessage(new ChatMsg("#2", player.getName()));
-		this.outputMessageHandler.sendMessage(player, Arrays.asList(cmdChannel));
-		this.isWhNeedRefresh.set(true);
+		this.outEventHandler.onOutEvent(new OutEvent(OutEvent.Kind.CMD, player, Collections.emptyList()));
+		this.waithallRefreshTask.run(Collections.unmodifiableSet(chat.getUsers()));
 	}
 }

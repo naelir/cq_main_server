@@ -1,5 +1,6 @@
 package cq_server.event;
 
+import javax.validation.constraints.NotNull;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -27,6 +28,7 @@ public final class AnswerEvent extends BaseEvent {
 	}
 
 	@XmlAttribute(name = "ANSWER")
+	@NotNull
 	public Integer getAnswer() {
 		return this.answer;
 	}

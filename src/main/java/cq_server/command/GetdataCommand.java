@@ -1,26 +1,20 @@
 package cq_server.command;
 
-import static cq_server.Assertions.notNull;
-
 import java.util.Arrays;
 
 import cq_server.event.GetDataEvent;
-import cq_server.game.BasePlayer;
-import cq_server.handler.IOutputMessageHandler;;
+import cq_server.model.MyData;
+import cq_server.model.OutEvent;
+import cq_server.model.Player;
 
-@SuppressWarnings("unused")
-public final class GetdataCommand implements ICommand {
-	private final IOutputMessageHandler outputMessageHandler;
-
-	private final GetDataEvent event;
-
-	public GetdataCommand(final GetDataEvent event, final CommandParamsBuilder builder) {
-		this.event = notNull("event", event);
-		this.outputMessageHandler = notNull("outputMessageHandler", builder.outputMessageHandler);
+public final class GetdataCommand extends BaseCommand implements ICommand<GetDataEvent> {
+	public GetdataCommand(final Builder builder) {
+		super(builder);
 	}
 
 	@Override
-	public void execute(final BasePlayer player) {
-		this.outputMessageHandler.sendMessage(player, Arrays.asList(player.getCmdChannel(), player.getMydata()));
+	public void execute(final GetDataEvent event, final Player player) {
+		final MyData mydata = player.getMydata();
+		this.outEventHandler.onOutEvent(new OutEvent(OutEvent.Kind.CMD, player, Arrays.asList(mydata)));
 	}
 }

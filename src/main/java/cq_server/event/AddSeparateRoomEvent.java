@@ -1,5 +1,6 @@
 package cq_server.event;
 
+import javax.validation.constraints.NotNull;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -21,45 +22,47 @@ import cq_server.model.SubRules;
 @XmlAccessorType(XmlAccessType.FIELD)
 public class AddSeparateRoomEvent extends BaseEvent {
 	@XmlAttribute(name = "MAP")
+	@NotNull
 	private CountryMap map;
 
 	@XmlAttribute(name = "OPP1")
+	@NotNull
 	private String opp1;
 
 	@XmlAttribute(name = "OPP2")
+	@NotNull
 	private String opp2;
 
 	@XmlAttribute(name = "OOPP")
+	@NotNull
 	private Integer oopp;
 
 	@XmlAttribute(name = "RULES")
+	@NotNull
 	private Integer rules;
 
 	@XmlAttribute(name = "SEPMESSAGEID")
+	@NotNull
 	private Integer seppmessageId;
 
 	@XmlAttribute(name = "QCATS")
+	@NotNull
 	private Integer qcats;
 
 	@XmlAttribute(name = "SUBRULES")
+	@NotNull
 	private Integer subRules;
 
 	@XmlAttribute(name = "PERSONAL")
+	@NotNull
 	private Integer personal;
 
 	public AddSeparateRoomEvent() {
 		super(EventType.ADDSEPROOM);
 	}
 
-	public AddSeparateRoomEvent(
-			final Integer personal,
-			final CountryMap map,
-			final String opp1,
-			final String opp2,
-			final Integer oopp,
-			final Integer rules,
-			final Integer subRules,
-			final Integer seppmessageId,
+	public AddSeparateRoomEvent(final Integer personal, final CountryMap map, final String opp1, final String opp2,
+			final Integer oopp, final Integer rules, final Integer subRules, final Integer seppmessageId,
 			final Integer qcats) {
 		super(EventType.ADDSEPROOM);
 		this.personal = personal;

@@ -7,7 +7,7 @@ public final class TipAnswer {
 
 	private final Double time;
 
-	public TipAnswer(int id, int answer, long time) {
+	public TipAnswer(final int id, final int answer, final long time) {
 		super();
 		this.id = id;
 		this.answer = answer;
@@ -15,14 +15,14 @@ public final class TipAnswer {
 	}
 
 	public Integer getAnswer() {
-		return answer;
+		return this.answer;
 	}
 
 	public Integer getId() {
-		return id;
+		return this.id;
 	}
 
 	public Double getTime() {
-		return time;
+		return this.time;
 	}
 }

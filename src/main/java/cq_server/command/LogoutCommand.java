@@ -1,32 +1,20 @@
 package cq_server.command;
 
-import static cq_server.Assertions.notNull;
-
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Collections;
 
 import cq_server.event.LogoutEvent;
-import cq_server.game.BasePlayer;
-import cq_server.handler.IOutputMessageHandler;
+import cq_server.model.OutEvent;
+import cq_server.model.Player;
 
-@SuppressWarnings("unused")
-public final class LogoutCommand implements ICommand {
-	private final LogoutEvent event;
-
-	private final AtomicBoolean isWhNeedRefresh;
-
-	private final IOutputMessageHandler outputMessageHandler;
-
-	public LogoutCommand(final LogoutEvent event, final CommandParamsBuilder builder) {
-		this.event = notNull("event", event);
-		this.isWhNeedRefresh = notNull("isWhNeedRefresh", builder.isWhNeedRefresh);
-		this.outputMessageHandler = notNull("outputMessageHandler", builder.outputMessageHandler);
+public final class LogoutCommand extends BaseCommand implements ICommand<LogoutEvent> {
+	public LogoutCommand(final Builder builder) {
+		super(builder);
 	}
 
 	@Override
-	public void execute(final BasePlayer player) {
+	public void execute(final LogoutEvent event, final Player player) {
 		player.setLoggedIn(false);
-		this.outputMessageHandler.sendMessage(player, Arrays.asList(player.getCmdChannel()));
-		this.isWhNeedRefresh.set(true);
+		this.outEventHandler.onOutEvent(new OutEvent(OutEvent.Kind.CMD, player, Collections.emptyList()));
+		this.waithallRefreshTask.run();
 	}
 }

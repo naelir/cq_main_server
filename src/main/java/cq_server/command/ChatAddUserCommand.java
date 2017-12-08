@@ -1,48 +1,25 @@
 package cq_server.command;
 
-import static cq_server.Assertions.notNull;
-
-import java.util.Arrays;
-import java.util.Map;
+import java.util.Collections;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import cq_server.event.ChatAddUserEvent;
-import cq_server.game.BasePlayer;
 import cq_server.game.Chat;
-import cq_server.game.IdFactory;
-import cq_server.handler.IOutputMessageHandler;
 import cq_server.model.ChatMsg;
-import cq_server.model.UserList;
+import cq_server.model.OutEvent;
+import cq_server.model.Player;
 
-public final class ChatAddUserCommand implements ICommand {
-	private final AtomicBoolean isWhNeedRefresh;
-
-	private final IOutputMessageHandler outputMessageHandler;
-
-	private final IdFactory idCreator;
-
-	private final ChatAddUserEvent event;
-
-	private final Map<Integer, Chat> chats;
-
-	private final UserList userList;
-
-	public ChatAddUserCommand(final ChatAddUserEvent event, final CommandParamsBuilder builder) {
-		this.event = notNull("event", event);
-		this.isWhNeedRefresh = notNull("isWhNeedRefresh", builder.isWhNeedRefresh);
-		this.outputMessageHandler = notNull("outputMessageHandler", builder.outputMessageHandler);
-		this.idCreator = notNull("idCreator", builder.idCreator);
-		this.chats = notNull("chats", builder.chats);
-		this.userList = notNull("userList", builder.usersList);
+public final class ChatAddUserCommand extends BaseCommand implements ICommand<ChatAddUserEvent> {
+	public ChatAddUserCommand(final Builder builder) {
+		super(builder);
 	}
 
 	@Override
-	public void execute(final BasePlayer player) {
-		final Optional<BasePlayer> invitedPlayer = this.userList.get(this.event.getUser());
-		final Integer chatId = this.event.getChatId();
+	public void execute(final ChatAddUserEvent event, final Player player) {
+		final Optional<Player> invitedPlayer = this.userList.get(event.getUser());
+		final Integer chatId = event.getChatId();
 		if (invitedPlayer.isPresent()) {
-			final BasePlayer invited = invitedPlayer.get();
+			final Player invited = invitedPlayer.get();
 			if (chatId == -1) {
 				final int id = this.idCreator.createId(Chat.class);
 				final Chat chat = new Chat(id, player);
@@ -53,13 +30,14 @@ public final class ChatAddUserCommand implements ICommand {
 				chat.addMessage(new ChatMsg("#1", player.getName()));
 				chat.addMessage(new ChatMsg("#1", invited.getName()));
 				this.chats.put(chat.getId(), chat);
+				this.waithallRefreshTask.run(Collections.unmodifiableSet(chat.getUsers()));
 			} else {
 				final Chat chat = this.chats.get(chatId);
 				chat.addUser(invited);
 				chat.addMessage(new ChatMsg("#1", invited.getName()));
+				this.waithallRefreshTask.run(Collections.unmodifiableSet(chat.getUsers()));
 			}
 		}
-		this.outputMessageHandler.sendMessage(player, Arrays.asList(player.getCmdChannel()));
-		this.isWhNeedRefresh.set(true);
+		this.outEventHandler.onOutEvent(new OutEvent(OutEvent.Kind.CMD, player, Collections.emptyList()));
 	}
 }

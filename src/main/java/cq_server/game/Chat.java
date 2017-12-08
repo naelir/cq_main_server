@@ -1,7 +1,10 @@
 package cq_server.game;
 
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -10,8 +13,8 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import cq_server.Assertions;
 import cq_server.model.ChatMsg;
+import cq_server.model.Player;
 
 @XmlRootElement(name = "CHATROOM")
 @XmlAccessorType(XmlAccessType.PROPERTY)
@@ -22,15 +25,15 @@ public class Chat {
 
 	private static final int DEFAULT_MSTATE = 0;
 
-	private BasePlayer host;
+	private Player host;
 
 	private int id;
 
-	private List<ChatMsg> messages;
+	private Queue<ChatMsg> messages;
 
 	private AtomicInteger mstate;
 
-	private List<BasePlayer> users;
+	private Set<Player> users;
 
 	private AtomicInteger ustate;
 
@@ -39,34 +42,36 @@ public class Chat {
 	public Chat() {
 	}
 
-	public Chat(final int id, final BasePlayer host) {
+	public Chat(final int id, final Player host) {
 		this.id = id;
 		this.host = host;
 		this.maxMissedMessages = MAX_MISSED_MESSAGES;
-		this.messages = new CopyOnWriteArrayList<>();
+		this.messages = new ConcurrentLinkedQueue<>();
 		this.mstate = new AtomicInteger(DEFAULT_MSTATE);
 		this.ustate = new AtomicInteger(DEFAULT_USTATE);
-		this.users = new CopyOnWriteArrayList<>();
+		this.users = new CopyOnWriteArraySet<>();
 	}
 
 	public boolean addMessage(final ChatMsg message) {
-		Assertions.notNull("message", message);
-		final int mid = this.mstate.incrementAndGet();
-		message.setId(mid);
-		return this.messages.add(message);
+		if (this.messages.offer(message)) {
+			if (this.messages.size() > this.maxMissedMessages)
+				this.messages.poll();
+			final int mid = this.mstate.incrementAndGet();
+			message.setId(mid);
+			return true;
+		}
+		return false;
 	}
 
-	public boolean addUser(final BasePlayer chatter) {
-		Assertions.notNull("chatter", chatter);
-		if (!this.users.contains(chatter) && this.users.add(chatter)) {
+	public boolean addUser(final Player user) {
+		if (this.users.add(user)) {
 			this.ustate.incrementAndGet();
 			return true;
 		}
 		return false;
 	}
 
-	public boolean contains(final BasePlayer chatter) {
-		Assertions.notNull("chatter", chatter);
+	public boolean contains(final Player chatter) {
 		return this.users.contains(chatter);
 	}
 
@@ -104,6 +109,10 @@ public class Chat {
 		return this.users.size();
 	}
 
+	public Set<Player> getUsers() {
+		return this.users;
+	}
+
 	@XmlAttribute(name = "USTATE")
 	public int getUstate() {
 		return this.ustate.get();
@@ -123,28 +132,30 @@ public class Chat {
 
 	public List<ChatMsg> missedMessages(final int mstateId) {
 		//@formatter:off
-		final int currentState = this.mstate.get(); 
+		final int currentState = this.mstate.get();
+		final List<ChatMsg> msgs;
 		if (mstateId == 0 && currentState > this.maxMissedMessages)
-			return this.messages
+			msgs = this.messages
 					.stream()
 					.filter(message -> message.getId() > currentState - this.maxMissedMessages)
 					.collect(Collectors.toList());
 		else
-			return this.messages
+			msgs = this.messages
 					.stream()
 					.filter(message -> message.getId() > mstateId)
 					.collect(Collectors.toList());
+		return msgs;
 		//@formatter:off
 	}
 
-	public boolean remove(final BasePlayer player) {
-		if (this.users.remove(player)) { 
+	public boolean remove(final Player player) {
+		if (this.users.remove(player)) {
  			this.ustate.incrementAndGet();
  			return true;
 		}
-		return false; 
+		return false;
 	}
- 
+
 
 	@Override
 	public String toString() {

@@ -21,31 +21,31 @@ public final class CmdSelect {
 		this(Collections.emptySet(), 0);
 	}
 
-	public CmdSelect(Set<Integer> availableAreas, Integer mapHelps) {
+	public CmdSelect(final Set<Integer> availableAreas, final Integer mapHelps) {
 		this.type = CmdType.SELECT;
 		this.availableAreas = availableAreas;
 		this.mapHelps = mapHelps;
 	}
 
-	public Set<Integer> getAvailableAreas() {
-		return availableAreas;
-	}
-
 	@XmlAttribute(name = "AVAILABLE")
 	public String getAvailable() {
 		int available = 0;
-		for (Integer area : availableAreas)
+		for (final Integer area : this.availableAreas)
 			available = available | 1 << (area.intValue() - 1);
 		return Integer.toHexString(available);
 	}
 
+	public Set<Integer> getAvailableAreas() {
+		return this.availableAreas;
+	}
+
 	@XmlAttribute(name = "MAPHELPS")
 	public int getMapHelps() {
-		return mapHelps;
+		return this.mapHelps;
 	}
 
 	@XmlAttribute(name = "CMD")
 	public CmdType getType() {
-		return type;
+		return this.type;
 	}
 }

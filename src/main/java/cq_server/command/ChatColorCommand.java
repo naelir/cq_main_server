@@ -1,24 +1,18 @@
 package cq_server.command;
 
-import java.util.Arrays;
+import java.util.Collections;
 
 import cq_server.event.ChatColorEvent;
-import cq_server.game.BasePlayer;
-import cq_server.handler.IOutputMessageHandler;
+import cq_server.model.OutEvent;
+import cq_server.model.Player;
 
-public class ChatColorCommand implements ICommand {
-	@SuppressWarnings("unused")
-	private ChatColorEvent event;
-
-	private IOutputMessageHandler outputMessageHandler;
-
-	public ChatColorCommand(final ChatColorEvent event, final CommandParamsBuilder builder) {
-		this.event = event;
-		this.outputMessageHandler = builder.outputMessageHandler;
+public class ChatColorCommand extends BaseCommand implements ICommand<ChatColorEvent> {
+	public ChatColorCommand(final Builder builder) {
+		super(builder);
 	}
 
 	@Override
-	public void execute(final BasePlayer player) {
-		this.outputMessageHandler.sendMessage(player, Arrays.asList(player.getCmdChannel()));
+	public void execute(final ChatColorEvent event, final Player player) {
+		this.outEventHandler.onOutEvent(new OutEvent(OutEvent.Kind.CMD, player, Collections.emptyList()));
 	}
 }

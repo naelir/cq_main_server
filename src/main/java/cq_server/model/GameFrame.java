@@ -26,7 +26,7 @@ public enum GameFrame {
 	// DESTROY_TOWER 4, 1, 15
 	// PREPARE_NEXT_LEG 4, 1, 21
 	// FINISH_GAME 15, 1, 0
-	//@formatter:off
+	//@formatter:off 
 	START(11, 0),
 	PREPARE_BASES (1,  0),
 	BUILD_FIRST_BASE (1, 3),
@@ -57,16 +57,16 @@ public enum GameFrame {
 
 	private final int phase;
 
-	private GameFrame(int state, int phase) {
+	private GameFrame(final int state, final int phase) {
 		this.state = state;
 		this.phase = phase;
 	}
 
-	public int getState() {
-		return state;
+	public int getPhase() {
+		return this.phase;
 	}
 
-	public int getPhase() {
-		return phase;
+	public int getState() {
+		return this.state;
 	}
 }

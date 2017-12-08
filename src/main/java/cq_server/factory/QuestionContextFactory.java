@@ -1,6 +1,14 @@
 package cq_server.factory;
 
-import cq_server.model.*;
+import cq_server.model.AnswerResult;
+import cq_server.model.Question;
+import cq_server.model.QuestionContext;
+import cq_server.model.RawQuestion;
+import cq_server.model.RawTip;
+import cq_server.model.TipInfo;
+import cq_server.model.TipQuestion;
+import cq_server.model.TipQuestionContext;
+import cq_server.model.TipResult;
 
 public class QuestionContextFactory implements IQuestionContextFactory {
 	private final IQuestionFactory questionFactory;
@@ -10,12 +18,14 @@ public class QuestionContextFactory implements IQuestionContextFactory {
 	}
 
 	@Override
-	public QuestionContext createQuestionContext(final int players, final int offender, final int deffender) {
+	public QuestionContext createQuestionContext(final int players, final int offender,
+			final int deffender) {
 		final RawQuestion rawQuestion = this.questionFactory.getFourOptionsQuestion();
 		final int trueAnswer = rawQuestion.getTrueAnswer();
-		final AnswerResult answerResult = new AnswerResult(trueAnswer, offender, deffender, players);
+		final AnswerResult answerResult = new AnswerResult(trueAnswer, offender, deffender,
+				players);
 		final Question question = new Question(rawQuestion, answerResult);
-		return new QuestionContext(rawQuestion, answerResult, question);
+		return new QuestionContext(question);
 	}
 
 	@Override

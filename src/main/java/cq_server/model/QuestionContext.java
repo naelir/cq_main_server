@@ -1,27 +1,13 @@
 package cq_server.model;
 
 public class QuestionContext {
-	private RawQuestion rawQuestion;
+	private final Question question;
 
-	private AnswerResult answerResult;
-
-	private Question question;
-
-	public QuestionContext(RawQuestion rawQuestion, AnswerResult answerResult, Question question) {
-		this.rawQuestion = rawQuestion;
-		this.answerResult = answerResult;
+	public QuestionContext(final Question question) {
 		this.question = question;
 	}
 
-	public AnswerResult getAnswerResult() {
-		return answerResult;
-	}
-
-	public RawQuestion getRawQuestion() {
-		return rawQuestion;
-	}
-
 	public Question getQuestion() {
-		return question;
+		return this.question;
 	}
 }

@@ -5,11 +5,11 @@ import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 import cq_server.factory.IGameFactory;
-import cq_server.game.BasePlayer;
 import cq_server.game.Chat;
 import cq_server.game.Game;
 import cq_server.model.GameRoomType;
 import cq_server.model.Page;
+import cq_server.model.Player;
 import cq_server.model.SepRoom;
 import cq_server.model.UserList;
 
@@ -18,9 +18,9 @@ public class GameStarterTask implements Runnable {
 
 	private final Map<Integer, SepRoom> sepRooms;
 
-	private final Deque<BasePlayer> shortRoomPlayers;
+	private final Deque<Player> shortRoomPlayers;
 
-	private final Map<BasePlayer, Game> games;
+	private final Map<Player, Game> games;
 
 	private final IGameFactory gameFactory;
 
@@ -41,41 +41,35 @@ public class GameStarterTask implements Runnable {
 		this.startShortRooms();
 	}
 
-	private boolean startGame(final Set<BasePlayer> players, final GameRoomType type) {
-		boolean isAllReady = true;
-		for (final BasePlayer basePlayer : players)
-			isAllReady = isAllReady && basePlayer.isReady() && basePlayer.isListen();
-		if (isAllReady) {
-			final Game game = this.gameFactory.createGame(new ArrayList<>(players), type);
-			for (final BasePlayer player : players) {
-				this.usersList.remove(player);
-				for (final Chat chat : this.chats.values())
-					chat.remove(player);
-				this.games.put(player, game);
-				player.setPage(Page.GAME);
-			}
-			game.tryNextFrame();
-			return true;
-		} else
-			return false;
+	private void startGame(final Set<Player> players, final GameRoomType type) {
+		final Game game = this.gameFactory.createGame(new ArrayList<>(players), type);
+		for (final Player player : players) {
+			this.usersList.remove(player);
+			for (final Chat chat : this.chats.values())
+				chat.remove(player);
+			this.games.put(player, game);
+			player.setPage(Page.GAME);
+		}
+		game.start();
 	}
 
 	private void startSepRooms() {
 		for (final Iterator<Entry<Integer, SepRoom>> iterator = this.sepRooms.entrySet().iterator(); iterator
 				.hasNext();) {
 			final SepRoom room = iterator.next().getValue();
-			if (room.isFull())
-				if (this.startGame(room.getPlayers(), GameRoomType.ROOM))
-					iterator.remove();
+			if (room.isFull()) {
+				iterator.remove();
+				this.startGame(room.getPlayers(), GameRoomType.ROOM);
+			}
 		}
 	}
 
 	private void startShortRooms() {
 		if (this.shortRoomPlayers.size() >= Game.GAME_PLAYERS_COUNT) {
-			final Set<BasePlayer> players = this.shortRoomPlayers.stream().limit(Game.GAME_PLAYERS_COUNT)
+			final Set<Player> players = this.shortRoomPlayers.stream().limit(Game.GAME_PLAYERS_COUNT)
 					.collect(Collectors.toSet());
-			if (this.startGame(players, GameRoomType.SHORT))
-				this.shortRoomPlayers.removeAll(players);
+			this.startGame(players, GameRoomType.SHORT);
+			this.shortRoomPlayers.removeAll(players);
 		}
 	}
 
@@ -84,9 +78,9 @@ public class GameStarterTask implements Runnable {
 
 		private Map<Integer, SepRoom> sepRooms;
 
-		private Deque<BasePlayer> shortRoomPlayers;
+		private Deque<Player> shortRoomPlayers;
 
-		private Map<BasePlayer, Game> games;
+		private Map<Player, Game> games;
 
 		private IGameFactory gameFactory;
 
@@ -106,7 +100,7 @@ public class GameStarterTask implements Runnable {
 			return this;
 		}
 
-		public Builder setGames(final Map<BasePlayer, Game> games) {
+		public Builder setGames(final Map<Player, Game> games) {
 			this.games = games;
 			return this;
 		}
@@ -116,7 +110,7 @@ public class GameStarterTask implements Runnable {
 			return this;
 		}
 
-		public Builder setShortRoomPlayers(final Deque<BasePlayer> shortRoomPlayers) {
+		public Builder setShortRoomPlayers(final Deque<Player> shortRoomPlayers) {
 			this.shortRoomPlayers = shortRoomPlayers;
 			return this;
 		}

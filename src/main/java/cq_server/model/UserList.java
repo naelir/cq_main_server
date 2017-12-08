@@ -12,8 +12,6 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import org.apache.commons.lang.StringUtils;
 
-import cq_server.game.BasePlayer;
-
 /*
  * <USERLIST STATEID="3553727" FULLUL="graou206|odisaure57|warren s |iamPepi|Big
  * Soul|grouchat^1|Stonewall^2|jack barron|e1000littre
@@ -25,7 +23,7 @@ import cq_server.game.BasePlayer;
  */
 @XmlRootElement(name = "USERLIST")
 public class UserList {
-	private final List<BasePlayer> users;
+	private final List<Player> users;
 
 	@XmlAttribute(name = "STATEID")
 	private Integer lastId;
@@ -45,19 +43,19 @@ public class UserList {
 		this.ulch = "";
 	}
 
-	public void add(final BasePlayer player) {
+	public void add(final Player player) {
 		this.users.add(player);
 		this.changes.add(new Change(this.lastId++, player.getName(), Operation.ADD));
 		this.fullUl = StringUtils.join(this.users.stream().map(a -> a.getName()).collect(Collectors.toList()), '|');
 	}
 
-	public void remove(final BasePlayer player) {
+	public void remove(final Player player) {
 		this.users.remove(player);
 		this.changes.add(new Change(this.lastId++, player.getName(), Operation.REMOVE));
 		this.fullUl = StringUtils.join(this.users.stream().map(a -> a.getName()).collect(Collectors.toList()), '|');
 	}
 
-	public Optional<BasePlayer> get(final String name) {
+	public Optional<Player> get(final String name) {
 		return this.users.stream().filter(element -> element.getName().equals(name)).findAny();
 	}
 

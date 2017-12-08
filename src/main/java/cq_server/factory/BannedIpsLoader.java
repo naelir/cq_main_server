@@ -1,7 +1,8 @@
-package cq_server.game;
+package cq_server.factory;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,9 +15,10 @@ public class BannedIpsLoader {
 	public List<String> load(final String fileName) {
 		try {
 			final List<String> bannedIps = new ArrayList<>();
-			if (!Files.exists(Paths.get(fileName)))
-				Files.createFile(Paths.get(fileName));
-			final List<String> list = Files.readAllLines(Paths.get(fileName));
+			Path path = Paths.get(fileName);
+			if (!Files.exists(path))
+				Files.createFile(path);
+			final List<String> list = Files.readAllLines(path);
 			for (final String item : list) {
 				final Matcher matcher = IP_PATTERN.matcher(item);
 				if (matcher.matches())

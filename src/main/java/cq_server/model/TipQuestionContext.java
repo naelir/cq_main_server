@@ -9,7 +9,11 @@ public class TipQuestionContext {
 
 	private final TipResult tipResult;
 
-	public TipQuestionContext(RawTip rawTip, TipQuestion tipQuestion, TipInfo tipinfo, TipResult tipResult) {
+	public TipQuestionContext(
+			final RawTip rawTip,
+			final TipQuestion tipQuestion,
+			final TipInfo tipinfo,
+			final TipResult tipResult) {
 		this.rawTip = rawTip;
 		this.tipQuestion = tipQuestion;
 		this.tipinfo = tipinfo;
@@ -17,18 +21,18 @@ public class TipQuestionContext {
 	}
 
 	public RawTip getRawTip() {
-		return rawTip;
-	}
-
-	public TipQuestion getTipQuestion() {
-		return tipQuestion;
+		return this.rawTip;
 	}
 
 	public TipInfo getTipinfo() {
-		return tipinfo;
+		return this.tipinfo;
+	}
+
+	public TipQuestion getTipQuestion() {
+		return this.tipQuestion;
 	}
 
 	public TipResult getTipResult() {
-		return tipResult;
+		return this.tipResult;
 	}
 }

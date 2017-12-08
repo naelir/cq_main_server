@@ -1,37 +1,23 @@
 package cq_server.command;
 
-import static cq_server.Assertions.notNull;
-
-import java.util.Arrays;
-import java.util.Map;
+import java.util.Collections;
 
 import cq_server.event.TipEvent;
-import cq_server.game.BasePlayer;
 import cq_server.game.Game;
-import cq_server.handler.IOutputMessageHandler;
-import cq_server.model.BaseChannel;;
+import cq_server.model.OutEvent;
+import cq_server.model.Player;
 
-public final class TipCommand implements ICommand {
-	private final TipEvent event;
-
-	private final Map<BasePlayer, Game> games;
-
-	private final IOutputMessageHandler outputMessageHandler;
-
-	public TipCommand(final TipEvent event, final CommandParamsBuilder builder) {
-		this.event = notNull("event", event);
-		this.games = notNull("games", builder.games);
-		this.outputMessageHandler = notNull("outputMessageHandler", builder.outputMessageHandler);
+public final class TipCommand extends BaseCommand implements ICommand<TipEvent> {
+	public TipCommand(final Builder builder) {
+		super(builder);
 	}
 
 	@Override
-	public void execute(final BasePlayer player) {
+	public void execute(final TipEvent event, final Player player) {
 		final Game game = this.games.get(player);
-		final Integer tip = this.event.getTip();
-		final BaseChannel cmdChannel = player.getCmdChannel();
+		final Integer tip = event.getTip();
 		player.setReady(true);
 		game.tip(player, tip);
-		game.tryNextFrame();
-		this.outputMessageHandler.sendMessage(player, Arrays.asList(cmdChannel));
+		this.outEventHandler.onOutEvent(new OutEvent(OutEvent.Kind.CMD, player, Collections.emptyList()));
 	}
 }

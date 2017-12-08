@@ -42,7 +42,7 @@ public class IpLimitFilter implements Filter {
 		filterChain.doFilter(servletRequest, servletResponse);
 	}
 
-	private HttpServletRequest getHttpServletRequest(final ServletRequest servletRequest) throws ServletException {
+	private HttpServletRequest getHttpServletRequest(final ServletRequest servletRequest) {
 		if (servletRequest instanceof HttpServletRequest)
 			return (HttpServletRequest) servletRequest;
 		else {

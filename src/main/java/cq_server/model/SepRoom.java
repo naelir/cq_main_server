@@ -2,8 +2,8 @@ package cq_server.model;
 
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -13,7 +13,6 @@ import javax.xml.bind.annotation.XmlRootElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cq_server.game.BasePlayer;
 import cq_server.game.Game;
 
 /*
@@ -26,45 +25,41 @@ public final class SepRoom {
 	@SuppressWarnings("unused")
 	private static final Logger LOG = LoggerFactory.getLogger(SepRoom.class);
 
-	private final Integer id;
+	private Integer id;
 
-	private final List<String> invited;
+	private List<String> invited;
 
-	private final CountryMap map;
+	private CountryMap map;
 
-	private final List<String> names;
+	private List<String> names;
 
-	private final Integer oopp;
+	private Integer oopp;
 
-	private final Integer personal;
+	private Integer personal;
 
-	private final Set<BasePlayer> players;
+	private Set<Player> players;
 
-	private final RoomSettings settings;
+	private RoomSettings settings;
 
 	protected SepRoom() {
-		this(null, null);
 	}
 
-	public SepRoom(final BasePlayer creator, final RoomSettings settings) {
-		this.id = creator.getId();
-		this.players = new ConcurrentSkipListSet<>();
-		this.players.add(creator);
-		this.names = new CopyOnWriteArrayList<>();
-		this.names.add(creator.getName());
-		this.invited = new CopyOnWriteArrayList<>();
-		this.invited.add(creator.getName());
+	public SepRoom(
+			final int id,
+			final List<Player> players,
+			final List<String> names,
+			final RoomSettings settings) {
+		this.id = id;
+		this.players = new CopyOnWriteArraySet<>(players);
+		this.names = new CopyOnWriteArrayList<>(names);
+		this.invited = new CopyOnWriteArrayList<>(names);
 		this.map = CountryMap.BG;
 		this.oopp = settings.getOopp().getValue();
 		this.personal = 1;
 		this.settings = settings;
-		if (OOPP.HASROBOT.equals(settings.getOopp())) {
-			this.names.add("robot-1");
-			this.names.add("robot-2");
-		}
 	}
 
-	public void add(final BasePlayer player) {
+	public void add(final Player player) {
 		if (this.players.size() >= Game.GAME_PLAYERS_COUNT) {
 		} else {
 			this.players.add(player);
@@ -107,7 +102,7 @@ public final class SepRoom {
 		return this.personal;
 	}
 
-	public Set<BasePlayer> getPlayers() {
+	public Set<Player> getPlayers() {
 		return this.players;
 	}
 
@@ -145,8 +140,7 @@ public final class SepRoom {
 		return OOPP.HASROBOT.equals(this.settings.getOopp()) || this.players.size() == Game.GAME_PLAYERS_COUNT;
 	}
 
-	public boolean remove(final BasePlayer player) {
+	public boolean remove(final Player player) {
 		return this.players.remove(player);
 	}
- 
 }

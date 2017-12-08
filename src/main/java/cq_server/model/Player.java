@@ -1,37 +1,22 @@
-package cq_server.game;
-
-import static cq_server.Assertions.notNull;
-
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+package cq_server.model;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cq_server.Assertions;
-import cq_server.event.CmdChannel;
-import cq_server.event.ListenChannel;
-import cq_server.model.*;
-
-public abstract class BasePlayer {
-	private static final Logger LOG = LoggerFactory.getLogger(BasePlayer.class);
+public class Player {
+	private static final Logger LOG = LoggerFactory.getLogger(Player.class);
 
 	private final ActiveChat activeChat;
-
-	private BaseChannel cmdChannel;
 
 	private final int id;
 
 	private final String ip;
 
-	private final AtomicBoolean isListen;
+	private boolean isListen;
 
-	private BaseChannel listenChannel;
+	private boolean loggedIn;
 
-	private final AtomicBoolean loggedIn;
-
-	private final AtomicInteger mstate;
+	private Integer mstate;
 
 	private final MyData mydata;
 
@@ -39,29 +24,30 @@ public abstract class BasePlayer {
 
 	private Page page;
 
-	private final AtomicBoolean ready;
+	private boolean ready;
 
 	private final Rights rights;
 
-	private final AtomicInteger ulstate;
+	private Integer ulstate;
 
 	private final WaitState waitState;
 
-	public BasePlayer(final Integer id, final String ip, final String name) {
-		this.id = notNull("id", id);
+	private final Type type;
+
+	public Player(final Integer id, final Type type, final String ip, final String name) {
+		this.type = type;
+		this.id = id;
 		this.mydata = new MyData(id, name);
 		this.ip = ip;
 		this.waitState = new WaitState(0, 0);
 		this.page = Page.WAITHALL;
 		this.rights = new Rights();
-		this.ulstate = new AtomicInteger(0);
-		this.ready = new AtomicBoolean(true);
+		this.ulstate = 0;
+		this.ready = true;
 		this.activeChat = new ActiveChat(0);
-		this.loggedIn = new AtomicBoolean(false);
-		this.isListen = new AtomicBoolean(false);
-		this.cmdChannel = new CmdChannel(0, 0, 0);
-		this.listenChannel = new ListenChannel(0, 0, 0);
-		this.mstate = new AtomicInteger(0); 
+		this.loggedIn = false;
+		this.isListen = true;
+		this.mstate = new Integer(0);
 	}
 
 	@Override
@@ -72,7 +58,7 @@ public abstract class BasePlayer {
 			return false;
 		if (this.getClass() != obj.getClass())
 			return false;
-		final BasePlayer other = (BasePlayer) obj;
+		final Player other = (Player) obj;
 		if (this.id != other.id)
 			return false;
 		return true;
@@ -80,10 +66,6 @@ public abstract class BasePlayer {
 
 	public ActiveChat getActiveChat() {
 		return this.activeChat;
-	}
-
-	public synchronized BaseChannel getCmdChannel() {
-		return this.cmdChannel;
 	}
 
 	public int getId() {
@@ -94,12 +76,8 @@ public abstract class BasePlayer {
 		return this.ip;
 	}
 
-	public synchronized BaseChannel getListenChannel() {
-		return this.listenChannel;
-	}
-
 	public int getMstate() {
-		return this.mstate.get();
+		return this.mstate;
 	}
 
 	public MyData getMydata() {
@@ -110,11 +88,11 @@ public abstract class BasePlayer {
 		return this.mydata.getName();
 	}
 
-	public synchronized NoChat getNoChat() {
+	public NoChat getNoChat() {
 		return this.noChat;
 	}
 
-	public synchronized Page getPage() {
+	public Page getPage() {
 		return this.page;
 	}
 
@@ -126,15 +104,17 @@ public abstract class BasePlayer {
 		return this.waitState.getSepRoomSel();
 	}
 
+	public Type getType() {
+		return this.type;
+	}
+
 	public int getUlStateId() {
-		return this.ulstate.get();
+		return this.ulstate;
 	}
 
 	public WaitState getWaitState() {
 		return this.waitState;
 	}
-
-	public abstract void handle(List<Object> data);
 
 	@Override
 	public int hashCode() {
@@ -145,31 +125,19 @@ public abstract class BasePlayer {
 	}
 
 	public boolean isListen() {
-		return this.isListen.get();
+		return this.isListen;
 	}
 
 	public boolean isLoggedIn() {
-		return this.loggedIn.get();
+		return this.loggedIn;
 	}
 
 	public boolean isReady() {
-		return this.ready.get();
+		return this.ready;
 	}
 
 	public void setActiveChat(final int chatId) {
 		this.activeChat.setId(chatId);
-	}
-
-	public synchronized void setChannel(final BaseChannel channel) {
-		Assertions.notNull("channel", channel);
-		if (channel instanceof ListenChannel) {
-			this.listenChannel = channel;
-			this.isListen.set(true);
-			;
-		} else
-			this.cmdChannel = channel;
-		if (channel.getConnid().equals(0))
-			channel.setConnId(this.id);
 	}
 
 	public void setFriendList(final String user, final ModFriendOperation operation) {
@@ -184,43 +152,48 @@ public abstract class BasePlayer {
 	}
 
 	public void setListen(final boolean isListen) {
-		this.isListen.set(isListen);
+		this.isListen = isListen;
+		LOG.trace("{} is listen: {}", this.mydata.getName(), isListen);
 	}
 
 	public void setLoggedIn(final boolean loggedIn) {
-		this.loggedIn.set(loggedIn);
+		this.loggedIn = loggedIn;
 	}
 
 	public void setMstate(final int mstate) {
-		this.mstate.set(mstate);
+		this.mstate = mstate;
 	}
 
 	public void setName(final String name) {
 		this.mydata.setName(name);
 	}
 
-	public synchronized void setNoChat(final NoChat noChat) {
+	public void setNoChat(final NoChat noChat) {
 		this.noChat = noChat;
 	}
 
-	public synchronized void setPage(final Page page) {
+	public void setPage(final Page page) {
 		this.page = page;
 		this.waitState.setSepRoomSel(0);
 		this.activeChat.setId(0);
-		this.mstate.set(0);
+		this.mstate = 0;
 	}
 
 	public void setReady(final boolean ready) {
-		LOG.debug("{} is ready: {}", this.mydata.getName(), ready);
-		this.ready.set(ready);
+		this.ready = ready;
+		LOG.trace("{} is ready: {}", this.mydata.getName(), ready);
 	}
 
 	public void setUlState(final int ulState) {
-		this.ulstate.set(ulState);
+		this.ulstate = ulState;
 	}
 
 	@Override
 	public String toString() {
 		return "Player [id=" + this.id + ", name=" + this.mydata.getName() + ", ip=" + this.ip + "]";
+	}
+
+	public enum Type {
+		ONLINE, ROBOT;
 	}
 }

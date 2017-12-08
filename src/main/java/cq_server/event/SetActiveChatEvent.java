@@ -1,5 +1,6 @@
 package cq_server.event;
 
+import javax.validation.constraints.NotNull;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -26,11 +27,13 @@ public final class SetActiveChatEvent extends BaseEvent {
 	}
 
 	@XmlAttribute(name = "ID")
+	@NotNull
 	public Integer getChatId() {
 		return this.chatId;
 	}
 
 	@XmlAttribute(name = "MSTATE")
+	@NotNull
 	public Integer getMstate() {
 		return this.mstate;
 	}

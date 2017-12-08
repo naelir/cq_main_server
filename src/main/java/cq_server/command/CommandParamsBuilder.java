@@ -2,44 +2,65 @@ package cq_server.command;
 
 import java.util.Deque;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
+import cq_server.event.CmdChannel;
+import cq_server.event.ListenChannel;
+import cq_server.factory.IPlayerFactory;
+import cq_server.factory.IdFactory;
 import cq_server.factory.NameFormatter;
-import cq_server.game.BasePlayer;
 import cq_server.game.Chat;
 import cq_server.game.Game;
-import cq_server.game.IdFactory;
-import cq_server.handler.IOutputMessageHandler;
+import cq_server.handler.IBanHandler;
+import cq_server.handler.IOutEventHandler;
+import cq_server.model.Player;
 import cq_server.model.SepRoom;
 import cq_server.model.UserList;
 
 public class CommandParamsBuilder {
-	protected Map<Integer, BasePlayer> loggedPlayers;
+	public Map<Integer, Player> loggedPlayers;
 
-	protected Map<Integer, Chat> chats;
+	public Map<Integer, Chat> chats;
 
-	protected UserList usersList;
+	public UserList usersList;
 
-	protected Map<Integer, SepRoom> sepRooms;
+	public Map<Integer, SepRoom> sepRooms;
 
-	protected Map<BasePlayer, Game> games;
+	public Map<Player, Game> games;
 
-	protected Deque<BasePlayer> shortRoomPlayers;
+	public Deque<Player> shortRoomPlayers;
 
-	protected IOutputMessageHandler outputMessageHandler;
+	public IOutEventHandler outEventHandler;
 
-	protected IdFactory idCreator;
+	public IdFactory idCreator;
 
-	protected NameFormatter nameFormatter;
+	public NameFormatter nameFormatter;
 
-	protected AtomicBoolean isWhNeedRefresh;
+	public IBanHandler banHandler;
+
+	public IPlayerFactory playerFactory;
+
+	public Runnable waithallRefreshTask;
+
+	public Map<Player, ListenChannel> listenChannels;
+
+	public Map<Player, CmdChannel> cmdChannels;
+
+	public CommandParamsBuilder setBanHandler(final IBanHandler banHandler) {
+		this.banHandler = banHandler;
+		return this;
+	}
 
 	public CommandParamsBuilder setChats(final Map<Integer, Chat> chats) {
 		this.chats = chats;
 		return this;
 	}
 
-	public CommandParamsBuilder setGames(final Map<BasePlayer, Game> games) {
+	public CommandParamsBuilder setCmdChannels(final Map<Player, CmdChannel> cmdChannels) {
+		this.cmdChannels = cmdChannels;
+		return this;
+	}
+
+	public CommandParamsBuilder setGames(final Map<Player, Game> games) {
 		this.games = games;
 		return this;
 	}
@@ -49,12 +70,12 @@ public class CommandParamsBuilder {
 		return this;
 	}
 
-	public CommandParamsBuilder setIsWhNeedRefresh(final AtomicBoolean isWhNeedRefresh) {
-		this.isWhNeedRefresh = isWhNeedRefresh;
+	public CommandParamsBuilder setListenChannels(final Map<Player, ListenChannel> listenChannels) {
+		this.listenChannels = listenChannels;
 		return this;
 	}
 
-	public CommandParamsBuilder setLoggedPlayers(final Map<Integer, BasePlayer> loggedPlayers) {
+	public CommandParamsBuilder setLoggedPlayers(final Map<Integer, Player> loggedPlayers) {
 		this.loggedPlayers = loggedPlayers;
 		return this;
 	}
@@ -64,8 +85,13 @@ public class CommandParamsBuilder {
 		return this;
 	}
 
-	public CommandParamsBuilder setOutputMessageHandler(final IOutputMessageHandler outputMessageHandler) {
-		this.outputMessageHandler = outputMessageHandler;
+	public CommandParamsBuilder setOutEventHandler(final IOutEventHandler outEventHandler) {
+		this.outEventHandler = outEventHandler;
+		return this;
+	}
+
+	public CommandParamsBuilder setPlayerFactory(final IPlayerFactory playerFactory) {
+		this.playerFactory = playerFactory;
 		return this;
 	}
 
@@ -74,13 +100,18 @@ public class CommandParamsBuilder {
 		return this;
 	}
 
-	public CommandParamsBuilder setShortRoomPlayers(final Deque<BasePlayer> shortRoomPlayers) {
+	public CommandParamsBuilder setShortRoomPlayers(final Deque<Player> shortRoomPlayers) {
 		this.shortRoomPlayers = shortRoomPlayers;
 		return this;
 	}
 
 	public CommandParamsBuilder setUsersList(final UserList usersList) {
 		this.usersList = usersList;
+		return this;
+	}
+
+	public CommandParamsBuilder setWaithallRefreshTask(final Runnable waithallRefreshTask) {
+		this.waithallRefreshTask = waithallRefreshTask;
 		return this;
 	}
 }

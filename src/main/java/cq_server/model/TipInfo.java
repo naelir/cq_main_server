@@ -87,7 +87,7 @@ public class TipInfo {
 		return this.tipAnswers.size() == this.players;
 	}
 
-	public void setTipInfo(final Integer playerId, final Integer tipAnswer) {
+	public void setTip(final Integer playerId, final Integer tipAnswer) {
 		final long time = (System.currentTimeMillis() - this.startTime);
 		this.tipAnswers.add(new TipAnswer(playerId, tipAnswer, time));
 		this.timeOrder.add(playerId);

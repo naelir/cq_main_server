@@ -28,6 +28,7 @@ public enum EventType {
 	DISCONNECT, 
 	RATEQUESTION,
 	ORDERSERVICE,
-	CHATCOLOR
+	CHATCOLOR,
+	BADQMARK
 //@formatter:on
 }

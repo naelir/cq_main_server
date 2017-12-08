@@ -1,30 +1,21 @@
 package cq_server.command;
 
-import static cq_server.Assertions.notNull;
-
 import java.util.Arrays;
 
 import cq_server.event.GetUserInfoEvent;
-import cq_server.game.BasePlayer;
-import cq_server.handler.IOutputMessageHandler;
-import cq_server.model.UserInfo;;
+import cq_server.model.OutEvent;
+import cq_server.model.Player;
+import cq_server.model.UserInfo;
 
-public final class GetUserInfoCommand implements ICommand {
-
-	private final GetUserInfoEvent event;
-
-	private final IOutputMessageHandler outputMessageHandler;
-
-	public GetUserInfoCommand(final GetUserInfoEvent event, final CommandParamsBuilder builder) {
-		this.event = notNull("event", event);
-		this.outputMessageHandler = notNull("outputMessageHandler", builder.outputMessageHandler);
+public final class GetUserInfoCommand extends BaseCommand implements ICommand<GetUserInfoEvent> {
+	public GetUserInfoCommand(final Builder builder) {
+		super(builder);
 	}
 
 	@Override
-	public void execute(final BasePlayer player) {
-		final String user = this.event.getUser();
-		final UserInfo info = new UserInfo(user); 
-		this.outputMessageHandler.sendMessage(player, Arrays.asList(player.getCmdChannel(), info));
-
+	public void execute(final GetUserInfoEvent event, final Player player) {
+		final String user = event.getUser();
+		final UserInfo info = new UserInfo(user);
+		this.outEventHandler.onOutEvent(new OutEvent(OutEvent.Kind.CMD, player, Arrays.asList(info)));
 	}
 }

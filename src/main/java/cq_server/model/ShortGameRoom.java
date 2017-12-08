@@ -4,18 +4,17 @@ import java.util.Deque;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import cq_server.game.BasePlayer;
 import cq_server.game.Game;
 
 public class ShortGameRoom extends GameRoom {
-	private final Map<BasePlayer, Game> games;
+	private final Map<Player, Game> games;
 
-	private final Deque<BasePlayer> shortRoomPlayers;
+	private final Deque<Player> shortRoomPlayers;
 
 	public ShortGameRoom(
 			final GameRoom.Builder builder,
-			final Map<BasePlayer, Game> games,
-			final Deque<BasePlayer> shortRoomPlayers) {
+			final Map<Player, Game> games,
+			final Deque<Player> shortRoomPlayers) {
 		super(builder);
 		this.games = games;
 		this.shortRoomPlayers = shortRoomPlayers;

@@ -3,17 +3,16 @@ package cq_server.model;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import cq_server.game.BasePlayer;
 import cq_server.game.Game;
 
 public class RoomGameRoom extends GameRoom {
-	private final Map<BasePlayer, Game> games;
+	private final Map<Player, Game> games;
 
 	private final Map<Integer, SepRoom> seprooms;
 
 	public RoomGameRoom(
 			final GameRoom.Builder builder,
-			final Map<BasePlayer, Game> games,
+			final Map<Player, Game> games,
 			final Map<Integer, SepRoom> seprooms) {
 		super(builder);
 		this.games = games;

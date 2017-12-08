@@ -5,6 +5,7 @@
  */
 package cq_server.event;
 
+import javax.validation.constraints.NotNull;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -28,6 +29,7 @@ public final class GetDataEvent extends BaseEvent {
 	}
 
 	@XmlAttribute(name = "QUERY")
+	@NotNull
 	public String getQuery() {
 		return this.query;
 	}

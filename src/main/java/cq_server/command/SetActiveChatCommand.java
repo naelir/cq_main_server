@@ -1,34 +1,24 @@
 package cq_server.command;
 
-import static cq_server.Assertions.notNull;
-
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Collections;
 
 import cq_server.event.SetActiveChatEvent;
-import cq_server.game.BasePlayer;
-import cq_server.handler.IOutputMessageHandler;;
+import cq_server.model.OutEvent;
+import cq_server.model.Player;
 
-public final class SetActiveChatCommand implements ICommand {
-	private final SetActiveChatEvent event;
-
-	private final AtomicBoolean isWhNeedRefresh;
-
-	private final IOutputMessageHandler outputMessageHandler;
-
-	public SetActiveChatCommand(final SetActiveChatEvent event, final CommandParamsBuilder builder) {
-		this.event = notNull("event", event);
-		this.isWhNeedRefresh = notNull("isWhNeedRefresh", builder.isWhNeedRefresh);
-		this.outputMessageHandler = notNull("outputMessageHandler", builder.outputMessageHandler);
+public final class SetActiveChatCommand extends BaseCommand implements ICommand<SetActiveChatEvent> {
+	public SetActiveChatCommand(final Builder builder) {
+		super(builder);
 	}
 
 	@Override
-	public void execute(final BasePlayer player) {
-		final Integer chatId = this.event.getChatId();
-		final Integer mstate = this.event.getMstate();
+	public void execute(final SetActiveChatEvent event, final Player player) {
+		final Integer chatId = event.getChatId();
+		final Integer mstate = event.getMstate();
 		player.setActiveChat(chatId);
 		player.setMstate(mstate);
-		this.outputMessageHandler.sendMessage(player, Arrays.asList(player.getCmdChannel()));
-		this.isWhNeedRefresh.set(true);
+		this.outEventHandler.onOutEvent(new OutEvent(OutEvent.Kind.CMD, player, Collections.emptyList()));
+		this.waithallRefreshTask.run(Arrays.asList(player));
 	}
 }

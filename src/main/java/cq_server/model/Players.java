@@ -1,12 +1,13 @@
 package cq_server.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import cq_server.game.BasePlayer;
 import cq_server.game.Game;
 
 @XmlRootElement(name = "PLAYERS")
@@ -14,7 +15,7 @@ public class Players {
 	// <PLAYERS PLAYER1="" NOCHAT1="1" PLAYER2="" NOCHAT2="1"
 	// PLAYER3="will0thewisp" NOCHAT3="1" YOU="3" OPP1="1" OPP2="2"
 	// DIVISION="64" RULES="1" TOURNAMENT="1" />
-	private Map<Integer, BasePlayer> players;
+	private Map<Integer, Player> players;
 
 	@XmlAttribute(name = "PLAYER1")
 	private String player1;
@@ -44,26 +45,29 @@ public class Players {
 		// TODO Auto-generated constructor stub
 	}
 
-	public Players(int you, Map<BasePlayer, Integer> players) {
-		super();
+	public Players(final int you, final Map<Player, Integer> players) {
+		assertThat(players.size()).isEqualTo(Game.GAME_PLAYERS_COUNT);
 		this.players = new HashMap<>(Game.GAME_PLAYERS_COUNT);
-		for (Map.Entry<BasePlayer, Integer> entry : players.entrySet())
+		for (final Map.Entry<Player, Integer> entry : players.entrySet())
 			this.players.put(entry.getValue(), entry.getKey());
 		this.you = you;
-		this.player1 = this.players.get(1).getName();
-		this.player2 = this.players.get(2).getName();
-		this.player3 = this.players.get(3).getName();
+		this.player1 = this.players.get(1)
+			.getName();
+		this.player2 = this.players.get(2)
+			.getName();
+		this.player3 = this.players.get(3)
+			.getName();
 		if (you == 1) {
-			opp1 = 2;
-			opp2 = 3;
+			this.opp1 = 2;
+			this.opp2 = 3;
 		}
 		if (you == 2) {
-			opp1 = 1;
-			opp2 = 3;
+			this.opp1 = 1;
+			this.opp2 = 3;
 		}
 		if (you == 3) {
-			opp1 = 1;
-			opp2 = 2;
+			this.opp1 = 1;
+			this.opp2 = 2;
 		}
 		this.rules = 1;
 	}
@@ -72,6 +76,12 @@ public class Players {
 	public String toString() {
 		return String.format(
 				"<PLAYERS PLAYER1=\"%s\" PLAYER2=\"%s\" PLAYER3=\"%s\" YOU=\"%d\" OPP1=\"%d\" OPP2=\"%d\" DIVISION=\"0\" RULES=\"1\" SUBRULES=\"2\" />",
-				players.get(0).getName(), players.get(1).getName(), players.get(2).getName(), you, opp1, opp2);
+				this.players.get(0)
+					.getName(),
+				this.players.get(1)
+					.getName(),
+				this.players.get(2)
+					.getName(),
+				this.you, this.opp1, this.opp2);
 	}
 }

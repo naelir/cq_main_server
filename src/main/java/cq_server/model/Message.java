@@ -21,7 +21,7 @@ public final class Message {
 		this(0, 0, null);
 	}
 
-	public Message(int from, int to, String msg) {
+	public Message(final int from, final int to, final String msg) {
 		super();
 		this.from = from;
 		this.to = to;
@@ -29,19 +29,19 @@ public final class Message {
 		this.color = 0;
 	}
 
-	public String getMsg() {
-		return msg;
+	public int getColor() {
+		return this.color;
 	}
 
 	public Integer getFrom() {
-		return from;
+		return this.from;
 	}
 
-	public int getColor() {
-		return color;
+	public String getMsg() {
+		return this.msg;
 	}
 
 	public Integer getTo() {
-		return to;
+		return this.to;
 	}
 }

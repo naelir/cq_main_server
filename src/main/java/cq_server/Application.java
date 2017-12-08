@@ -1,9 +1,18 @@
 package cq_server;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -13,28 +22,36 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.Banner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.embedded.FilterRegistrationBean;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Scope;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.xsocket.connection.IConnectHandler;
+import org.xsocket.connection.IDataHandler;
+import org.xsocket.connection.IDisconnectHandler;
 import org.xsocket.connection.INonBlockingConnection;
 import org.xsocket.connection.IServer;
 import org.xsocket.connection.Server;
 
-import cq_server.command.CommandParamsBuilder;
+import cq_server.command.BaseCommand;
 import cq_server.event.*;
-import cq_server.event.validator.EventValidator;
-import cq_server.event.validator.IEventValidator;
 import cq_server.factory.*;
-import cq_server.game.*;
-import cq_server.handler.IInputMessageHandler;
-import cq_server.handler.IOutputMessageHandler;
-import cq_server.handler.InputMessageHandler;
-import cq_server.handler.OutputMessageHandler;
+import cq_server.game.Chat;
+import cq_server.game.Game;
+import cq_server.game.GameState;
+import cq_server.game.MainChat;
+import cq_server.handler.*;
+import cq_server.http.IpFilter;
+import cq_server.http.IpLimitFilter;
+import cq_server.http.IpTimeWindowManager;
 import cq_server.model.*;
-import cq_server.task.FinishedGamesClearerTask;
 import cq_server.task.GameStarterTask;
 import cq_server.task.QuestionRefreherTask;
 import cq_server.task.WaithallRefreshTask;
 
-//@formatter:off 
+//@formatter:off
 @SpringBootApplication
 public class Application {
 	private static final Logger LOG = LoggerFactory.getLogger(Application.class);
@@ -47,9 +64,7 @@ public class Application {
 
 	private static final String T_ENDPOINT = "--tEndpoint";
 
-	private static final int EXECUTOR_THREAD_COUNT = 1;
-
-	private static final int SCHEDULER_THREAD_COUNT = 2;
+	private static final int SCHEDULER_THREAD_COUNT = 1;
 
 	private static final int FLASH_TCP_PORT = 2002;
 
@@ -67,7 +82,7 @@ public class Application {
 		return map;
 	}
 
-	@SuppressWarnings("unchecked")
+ 	@SuppressWarnings("unchecked")
 	public static void main(final String[] args) {
 		final Class<Application> mainClass = Application.class;
 		final SpringApplication application = new SpringApplication(mainClass);
@@ -80,7 +95,7 @@ public class Application {
 			final String questionsApiEndpoint = argsMap.get(Q_ENDPOINT);
 			final String tipsApiEndpoint = argsMap.get(T_ENDPOINT);
 			final Class<?>[] inCmdClasses = new Class<?>[] {
-				BaseChannel.class, 
+				BaseChannel.class,
 				ListenChannel.class,
 				CmdChannel.class
 			};
@@ -108,44 +123,45 @@ public class Application {
 				TipEvent.class,
 				WebLoginEvent.class,
 				ChatColorEvent.class,
-				OrderServiceEvent.class
+				OrderServiceEvent.class,
+				BadQMarkEvent.class,
+				RateQuestionEvent.class
 			};
 			final Class<?>[] outConvertableClasses = new Class<?>[] {
 				ActiveChat.class ,
-				AnswerResult.class,  
-				CmdAnswer.class, 
+				AnswerResult.class,
+				CmdAnswer.class,
 				CmdSelect.class,
 				CmdTip.class,
-				BaseChannel.class, 
+				BaseChannel.class,
 				ListenChannel.class,
 				CmdChannel.class,
-				Chat.class, 
-				ChatMsg.class, 
+				Chat.class,
+				ChatMsg.class,
 				ConnStatus.class,
 				FriendList.class,
-				FriendListChange.class,   
+				FriendListChange.class,
 				GameOver.class,
 				GameRoom.class,
-				GameState.class, 
+				GameState.class,
 				Message.class,
 				MyData.class,
 				NewMailFlag.class,
 				NewReg.class,
 				NoChat.class,
 				Players.class,
-				Question.class, 
+				Question.class,
 				Reconnect.class,
 				Rights.class,
 				SepRoom.class,
-				Substitute.class,  
+				Substitute.class,
 				TipInfo.class,
 				TipQuestion.class,
 				TipResult.class,
 				UserInfo.class,
 				UserList.class,
 				WaitState.class,
-				WinnerSelect.class,
-				RateQuestionEvent.class
+				WinnerSelect.class
 			};
 			final Map<Integer, List<Integer>> mapBgNeighbors = new HashMap<>();
 			mapBgNeighbors.put(1, Arrays.asList(2, 7, 8));
@@ -172,62 +188,75 @@ public class Application {
 			final List<RawQuestion> rawQuestions = new ArrayList<>();
 			final List<RawTip> rawTips = new ArrayList<>();
 			final Map<Integer, Chat> chats = new ConcurrentHashMap<>();
-			final ExecutorService executor = Executors.newFixedThreadPool(EXECUTOR_THREAD_COUNT);
 			final Map<Integer, GameRoom> gameRooms = new HashMap<>();
-			final Map<BasePlayer, Game> games = new ConcurrentHashMap<>();
+			final Map<Player, Game> games = new ConcurrentHashMap<>();
 			final IdFactory idFactory = new IdFactory();
-			final Map<Integer, BasePlayer> loggedPlayers = new ConcurrentHashMap<>();
-			final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(SCHEDULER_THREAD_COUNT);
+			final Map<Integer, Player> loggedPlayers = new ConcurrentHashMap<>();
+			final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(SCHEDULER_THREAD_COUNT, r -> new Thread(r, "scheduler-thread"));
 			final Map<Integer, SepRoom> sepRooms = new ConcurrentHashMap<>();
-			final Deque<BasePlayer> shortRoomPlayers = new ConcurrentLinkedDeque<>();
+			final Deque<Player> shortRoomPlayers = new ConcurrentLinkedDeque<>();
 			final JAXBContext cmdContext = JAXBContext.newInstance(inCmdClasses);
 			final JAXBContext eventContext = JAXBContext.newInstance(inEventClasses);
 			final JAXBContext outMessagesContext = JAXBContext.newInstance(outConvertableClasses);
-			final Map<INonBlockingConnection, BasePlayer> connectedPlayers = new ConcurrentHashMap<>();
-			final Map<BasePlayer, INonBlockingConnection> connections = new ConcurrentHashMap<>();
+			final Map<INonBlockingConnection, Player> connectedPlayers = new ConcurrentHashMap<>();
+			final Map<Player, INonBlockingConnection> connections = new ConcurrentHashMap<>();
 			final UserList usersList = new UserList();
-			final IMessageFactory messageFactory = new MessageFactory(cmdContext, eventContext, outMessagesContext);
-			final IOutputMessageHandler outputMessageHandler = new OutputMessageHandler(connections, bannedIps,
-					messageFactory);
+ 			final IResponseFactory responseFactory = new DefaultResponseFactory(outMessagesContext);
+			final IBanHandler banHandler = new DefaultBanHandler(connections, bannedIps);
+			final IOutEventHandler robotHandler = new RobotHandler(games, scheduler);
+			final Map<Player, Queue<OutEvent>> toSendMessages = new ConcurrentHashMap<>();
+			final IOutEventHandler onlinePlayerHandler = new OnlinePlayerHandler(connections, responseFactory, toSendMessages);
+			final IOutEventHandler outEventHandler = new DefaultOutEventHandler(onlinePlayerHandler, robotHandler);
 			final NameFormatter nameFormatter = new NameFormatter();
-			final AtomicBoolean isWhNeedRefresh =  new AtomicBoolean(false);
-			final Runnable  waithallRefreshTask = new WaithallRefreshTask.Builder()
-					.setIsWhNeedRefresh(isWhNeedRefresh)
-					.setSeparateRooms(sepRooms)
+ 			final WaithallRefreshTask  waithallRefreshTask = new WaithallRefreshTask.Builder()
+ 					.setSeparateRooms(sepRooms)
 					.setChats(chats)
 					.setGameRooms(gameRooms)
 					.setLoggedPlayers(loggedPlayers)
-					.setOutputMessageHandler(outputMessageHandler)
+					.setoutEventHandler(outEventHandler)
 					.setUsersList(usersList)
-					.build(); 
-			final CommandParamsBuilder commandParamsBuilder = new CommandParamsBuilder()
+					.build();
+			final IPlayerFactory playerFactory = new DefaultPlayerFactory(idFactory);
+			final BaseCommand.Builder commandParamsBuilder = new BaseCommand.Builder()
 					.setChats(chats)
 					.setGames(games)
 					.setIdCreator(idFactory)
 					.setLoggedPlayers(loggedPlayers)
-					.setOutputMessageHandler(outputMessageHandler)
+					.setOutEventHandler(outEventHandler)
 					.setSepRooms(sepRooms)
 					.setNameFormatter(nameFormatter)
-					.setUsersList(usersList)
+					.setUserList(usersList)
 					.setShortRoomPlayers(shortRoomPlayers)
-					.setIsWhNeedRefresh(isWhNeedRefresh);
-			final ICommandFactory commandFactory = new CommandFactory(commandParamsBuilder);
-			final IPlayerFactory playerFactory = new PlayerFactory(idFactory, outputMessageHandler, scheduler);
+ 					.setBanHandler(banHandler)
+					.setPlayerFactory(playerFactory)
+					.setWaithallRefreshTask(waithallRefreshTask);
+			final ICommandFactory commandFactory = new DefaultCommandFactory(commandParamsBuilder);
 			final IQuestionFactory questionFactory = new QuestionFactory(rawQuestions, rawTips);
 			final IQuestionContextFactory questionContextFactory = new QuestionContextFactory(questionFactory);
-			final IGameFactory gameFactory = new GameFactory(idFactory, questionContextFactory, playerFactory, mapBgNeighbors);
-			final IEventValidator eventValidator = new EventValidator();
-			final IInputMessageHandler inputMessageHandler = new InputMessageHandler.Builder()
+			final IGameFactory gameFactory = new DefaultGameFactory(idFactory, questionContextFactory,  mapBgNeighbors, outEventHandler);
+ 			final IRequestFactory requestFactory = new DefaultRequestFactory(cmdContext, eventContext)
+;			final IDataHandler dataHandler = new OnDataHandler.Builder()
+					.setCommandFactory(commandFactory)
+					.setConnectedPlayers(connectedPlayers)
+					.setRequestFactory(requestFactory)
+ 					.setOutEventHandler(outEventHandler)
+					.build();
+			final IConnectHandler connectHandler = new OnConnectHandler.Builder()
 					.setBannedIps(bannedIps)
+					.setConnectedPlayers(connectedPlayers)
+					.setConnections(connections)
+					.setPlayerFactory(playerFactory)
+					.setToSendMessages(toSendMessages)
+					.build();
+			final IDisconnectHandler disconnectHandler = new OnDisconnectHandler.Builder()
 					.setCommandFactory(commandFactory)
 					.setConnectedPlayers(connectedPlayers)
 					.setConnections(connections)
-					.setMessageFactory(messageFactory)
-					.setPlayerFactory(playerFactory)
-					.setEventValidator(eventValidator)
+					.setToSendMessages(toSendMessages)
 					.build();
-			final Runnable finishedGamesClearerTask = new FinishedGamesClearerTask(games);
-			final Runnable gameStarterTask = new GameStarterTask.Builder()
+
+			final IInEventHandler inputMessageHandler = new DefaultInEventHandler(dataHandler, disconnectHandler, connectHandler);
+ 			final Runnable gameStarterTask = new GameStarterTask.Builder()
 					.setChats(chats)
 					.setGameFactory(gameFactory)
 					.setGames(games)
@@ -235,7 +264,7 @@ public class Application {
 					.setShortRoomPlayers(shortRoomPlayers)
 					.setUsersList(usersList)
 					.build();
-			final IQuestionsLoader questionsLoader = new OnlineQuestionsLoader(questionsApiEndpoint, tipsApiEndpoint); 
+ 			final IQuestionsLoader questionsLoader = new OnlineQuestionsLoader(questionsApiEndpoint, tipsApiEndpoint);
 			final Runnable questionRefreherTask = new QuestionRefreherTask(rawQuestions, rawTips, questionsLoader);
 			final GameRoom.Builder shortGameRoomBuilder = new GameRoom.Builder()
 					.setId(SHORT_GAMES_GAMEROOM_ID)
@@ -258,13 +287,127 @@ public class Application {
 			final int mainChatid = idFactory.createId(Chat.class);
 			final Chat mainChat = new MainChat(mainChatid, null);
 			chats.put(mainChat.getId(), mainChat);
-			scheduler.scheduleAtFixedRate(finishedGamesClearerTask, 0, 1, TimeUnit.SECONDS);
-			scheduler.scheduleAtFixedRate(waithallRefreshTask, 0, 200, TimeUnit.MILLISECONDS);
-			scheduler.scheduleAtFixedRate(gameStarterTask, 0, 200, TimeUnit.MILLISECONDS);
-			scheduler.scheduleAtFixedRate(questionRefreherTask, 0, 6, TimeUnit.HOURS);
-			executor.submit(server);
+ 			scheduler.scheduleAtFixedRate(gameStarterTask, 0, 200, TimeUnit.MILLISECONDS);
+  			scheduler.scheduleAtFixedRate(questionRefreherTask, 0, 6, TimeUnit.HOURS);
+			new Thread(server, "cq-server").start();
 		} catch (final IOException | JAXBException e) {
-			LOG.error("{}", e);
+			LOG.error("unexpected error occurred", e);
+		}
+	}
+
+	private final Builder buidler;
+
+	public Application() {
+		final List<String> allowedIps = new ArrayList<>();
+		final List<String> bannedIps = new ArrayList<>();
+		final IpFilter ipFilter = new IpFilter(bannedIps, allowedIps);
+		final FilterRegistrationBean ipFilterRegistrationBean = new FilterRegistrationBean();
+		ipFilterRegistrationBean.setFilter(ipFilter);
+		ipFilterRegistrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+		final IpTimeWindowManager ipTimeWindowManager = new IpTimeWindowManager();
+		final IpLimitFilter ipLimitFilter = new IpLimitFilter(ipTimeWindowManager);
+		final FilterRegistrationBean ipLimitFilterRegistrationBean = new FilterRegistrationBean();
+		ipLimitFilterRegistrationBean.setFilter(ipLimitFilter);
+		ipLimitFilterRegistrationBean.setOrder(Ordered.LOWEST_PRECEDENCE);
+		this.buidler =
+				new Builder()
+				.setAllowedIps(allowedIps)
+				.setBannedIps(bannedIps).setIpFilter(ipFilter)
+				.setIpFilterRegistrationBean(ipFilterRegistrationBean)
+				.setIpLimitFilter(ipLimitFilter)
+				.setIpLimitFilterRegistrationBean(ipLimitFilterRegistrationBean)
+				.setIpTimeWindowManager(ipTimeWindowManager);
+	}
+
+	@Bean(name = "allowedIps")
+	public List<String> allowedIps() {
+		return this.buidler.allowedIps;
+	}
+
+	@Bean(name = "bannedIps")
+	public List<String> bannedIps() {
+		return this.buidler.bannedIps;
+	}
+
+	@Bean
+	@Order(Ordered.LOWEST_PRECEDENCE)
+	public IpFilter getIpFilter() {
+		return this.buidler.ipFilter;
+	}
+
+	@Bean
+	@Order(Ordered.HIGHEST_PRECEDENCE)
+	public FilterRegistrationBean ipFilterRegistrationBean() {
+		return this.buidler.ipFilterRegistrationBean;
+	}
+
+	@Bean
+	@Order(Ordered.LOWEST_PRECEDENCE)
+	public IpLimitFilter ipLimitFilter() {
+		return this.buidler.ipLimitFilter;
+	}
+
+	@Bean
+	@Order(Ordered.LOWEST_PRECEDENCE)
+	public FilterRegistrationBean ipLimitFilterRegistrationBean() {
+		return this.buidler.ipLimitFilterRegistrationBean;
+	}
+
+	@Bean
+	@Scope(value = "singleton")
+	@Order(Ordered.LOWEST_PRECEDENCE)
+	public IpTimeWindowManager ipTimeWindowManager() {
+		return this.buidler.ipTimeWindowManager;
+	}
+
+	public static final class Builder {
+		List<String> allowedIps;
+
+		List<String> bannedIps;
+
+		IpFilter ipFilter;
+
+		FilterRegistrationBean ipFilterRegistrationBean;
+
+		IpLimitFilter ipLimitFilter;
+
+		FilterRegistrationBean ipLimitFilterRegistrationBean;
+
+		IpTimeWindowManager ipTimeWindowManager;
+
+		public Builder setAllowedIps(final List<String> allowedIps) {
+			this.allowedIps = allowedIps;
+			return this;
+		}
+
+		public Builder setBannedIps(final List<String> bannedIps) {
+			this.bannedIps = bannedIps;
+			return this;
+		}
+
+		public Builder setIpFilter(final IpFilter ipFilter) {
+			this.ipFilter = ipFilter;
+			return this;
+		}
+
+		public Builder setIpFilterRegistrationBean(final FilterRegistrationBean ipFilterRegistrationBean) {
+			this.ipFilterRegistrationBean = ipFilterRegistrationBean;
+			return this;
+		}
+
+		public Builder setIpLimitFilter(final IpLimitFilter ipLimitFilter) {
+			this.ipLimitFilter = ipLimitFilter;
+			return this;
+		}
+
+		public Builder setIpLimitFilterRegistrationBean(final FilterRegistrationBean ipLimitFilterRegistrationBean) {
+			this.ipLimitFilterRegistrationBean = ipLimitFilterRegistrationBean;
+			return this;
+		}
+
+		public Builder setIpTimeWindowManager(final IpTimeWindowManager ipTimeWindowManager) {
+			this.ipTimeWindowManager = ipTimeWindowManager;
+			return this;
 		}
 	}
 }

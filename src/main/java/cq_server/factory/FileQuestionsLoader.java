@@ -1,4 +1,4 @@
-package cq_server.game;
+package cq_server.factory;
 
 import java.io.*;
 import java.net.URL;
@@ -39,12 +39,12 @@ public class FileQuestionsLoader implements IQuestionsLoader {
 
 	@Override
 	public Questions load() {
+		Questions questions = new Questions(new ArrayList<RawQuestion>(), new ArrayList<RawTip>());
 		try {
 			final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
 			textEncryptor.setPassword(this.password);
 			final URL url = this.getClass().getClassLoader().getResource(this.questionsFile);
 			if (url != null) {
-				Questions allQuestions;
 				final byte[] encoded = IOUtils.toByteArray(url.openStream());
 				final String encodedText = new String(encoded);
 				final String decoded = textEncryptor.decrypt(encodedText);
@@ -52,25 +52,26 @@ public class FileQuestionsLoader implements IQuestionsLoader {
 				try (OutputStream os = new FileOutputStream(questionsFileDecoded)) {
 					os.write(decoded.getBytes(Charset.forName(this.encoding)));
 				}
-				try (BufferedReader in = new BufferedReader(
-						new InputStreamReader(new FileInputStream(questionsFileDecoded), this.encoding))) {
-					allQuestions = this.readQuestions(in);
+				try (
+					FileInputStream fin = new FileInputStream(questionsFileDecoded);
+					InputStreamReader isr = new InputStreamReader(fin, this.encoding);
+					BufferedReader br = new BufferedReader(isr)) {
+					questions = this.readQuestions(br);
 				}
 				Files.delete(Paths.get(questionsFileDecoded));
 				LOG.info("questions loaded");
-				return allQuestions;
 			} else
 				LOG.info("question file not found");
 		} catch (final IOException e) {
 			LOG.error(e.getMessage());
 		}
-		return new Questions(new ArrayList<RawQuestion>(), new ArrayList<RawTip>());
+		return questions;
 	}
 
-	private Questions readQuestions(final BufferedReader in) throws IOException {
+	private Questions readQuestions(final BufferedReader br) throws IOException {
 		final List<RawQuestion> rawQuestions = new ArrayList<>();
 		final List<RawTip> rawTips = new ArrayList<>();
-		for (String inputLine = in.readLine(); inputLine != null; inputLine = in.readLine()) {
+		for (String inputLine = br.readLine(); inputLine != null; inputLine = br.readLine()) {
 			final String[] question = inputLine.split("\\|");
 			if (question.length == 5) {
 				final String[] options = new String[4];

@@ -24,7 +24,6 @@ public abstract class BaseChannel {
 		this.result = result;
 	}
 
-
 	@XmlAttribute(name = "CONN")
 	public Integer getConnid() {
 		return this.connid;
@@ -55,10 +54,14 @@ public abstract class BaseChannel {
 	public void setResult(final Integer result) {
 		this.result = result;
 	}
-	
+
 	@Override
 	public String toString() {
 		return "BaseChannel [connid=" + this.connid + ", msgnum=" + this.msgnum + ", result=" + this.result
 				+ ", getClass()=" + this.getClass() + "]";
+	}
+
+	public enum Type {
+		LISTEN, CMD;
 	}
 }

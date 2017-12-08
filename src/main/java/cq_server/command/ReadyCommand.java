@@ -1,34 +1,22 @@
 package cq_server.command;
 
-import static cq_server.Assertions.notNull;
-
-import java.util.Arrays;
-import java.util.Map;
+import java.util.Collections;
 
 import cq_server.event.ReadyEvent;
-import cq_server.game.BasePlayer;
 import cq_server.game.Game;
-import cq_server.handler.IOutputMessageHandler;;
+import cq_server.model.OutEvent;
+import cq_server.model.Player;
 
-@SuppressWarnings("unused")
-public final class ReadyCommand implements ICommand {
-	private final ReadyEvent event;
-
-	private final Map<BasePlayer, Game> games;
-
-	private final IOutputMessageHandler outputMessageHandler;
-
-	public ReadyCommand(final ReadyEvent event, final CommandParamsBuilder builder) {
-		this.event = notNull("event", event);
-		this.games = notNull("games", builder.games);
-		this.outputMessageHandler = notNull("outputMessageHandler", builder.outputMessageHandler);
+public final class ReadyCommand extends BaseCommand implements ICommand<ReadyEvent> {
+	public ReadyCommand(final Builder builder) {
+		super(builder);
 	}
 
 	@Override
-	public void execute(final BasePlayer player) {
+	public void execute(final ReadyEvent event, final Player player) {
 		final Game game = this.games.get(player);
 		player.setReady(true);
-		game.tryNextFrame();
-		this.outputMessageHandler.sendMessage(player, Arrays.asList(player.getCmdChannel()));
+		game.ready();
+		this.outEventHandler.onOutEvent(new OutEvent(OutEvent.Kind.CMD, player, Collections.emptyList()));
 	}
 }

@@ -1,21 +1,21 @@
 package cq_server.model;
 
 public final class NetworkMessage {
-	private BaseChannel channel;
+	private final BaseChannel channel;
 
-	private BaseEvent event;
+	private final BaseEvent event;
 
-	public NetworkMessage(BaseChannel channel, BaseEvent event) {
+	public NetworkMessage(final BaseChannel channel, final BaseEvent event) {
 		super();
 		this.channel = channel;
 		this.event = event;
 	}
 
 	public BaseChannel getChannel() {
-		return channel;
+		return this.channel;
 	}
 
 	public BaseEvent getEvent() {
-		return event;
+		return this.event;
 	}
 }

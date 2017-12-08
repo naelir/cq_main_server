@@ -1,16 +1,39 @@
 package cq_server.game;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cq_server.factory.IPlayerFactory;
 import cq_server.factory.IQuestionContextFactory;
-import cq_server.model.*;
+import cq_server.handler.IOutEventHandler;
+import cq_server.model.AnswerResult;
+import cq_server.model.CmdAnswer;
+import cq_server.model.CmdSelect;
+import cq_server.model.CmdTip;
+import cq_server.model.GameFrame;
+import cq_server.model.GameHistory;
+import cq_server.model.GameOver;
+import cq_server.model.GameRoomType;
+import cq_server.model.Message;
+import cq_server.model.OutEvent;
+import cq_server.model.Player;
+import cq_server.model.Players;
+import cq_server.model.Question;
+import cq_server.model.QuestionContext;
+import cq_server.model.TipInfo;
+import cq_server.model.TipQuestion;
+import cq_server.model.TipQuestionContext;
+import cq_server.model.TipResult;
+import cq_server.model.WinnerSelect;
 
 public final class Game {
 	private static final Logger LOG = LoggerFactory.getLogger(Game.class);
@@ -19,11 +42,9 @@ public final class Game {
 
 	public static final int GAME_PLAYERS_COUNT = 3;
 
-	private final AtomicInteger commandsReceived;
-
 	private final int id;
 
-	private final Map<BasePlayer, Integer> players;
+	private final Map<Player, Integer> players;
 
 	private final GameState state;
 
@@ -33,81 +54,51 @@ public final class Game {
 
 	private final IQuestionContextFactory questionContextFactory;
 
-	private final IPlayerFactory playerFactory;
+	private final Map<Player, Object> commands;
 
-	public Game(
-			final int id,
-			final Map<BasePlayer, Integer> players,
-			final GameRoomType type,
-			final GameState state,
-			final GameHistory gameHistory,
-			final IQuestionContextFactory questionContextFactory,
-			final IPlayerFactory playerFactory) {
-		this.id = id;
-		this.players = players;
-		this.type = type;
-		this.state = state;
-		this.gameHistory = gameHistory;
-		this.questionContextFactory = questionContextFactory;
-		this.playerFactory = playerFactory;
-		this.commandsReceived = new AtomicInteger(0);
+	private final IOutEventHandler messageHandler;
+
+	public Game(final Builder builder) {
+		this.id = builder.id;
+		this.players = builder.players;
+		this.state = builder.state;
+		this.type = builder.type;
+		this.gameHistory = builder.gameHistory;
+		this.questionContextFactory = builder.questionContextFactory;
+		this.messageHandler = builder.messageHandler;
+		this.commands = new ConcurrentHashMap<>();
 	}
 
-	public void answer(final BasePlayer player, final int answer) {
+	public void answer(final Player player, final Integer answer) {
 		LOG.info("{} answer: {}", player.getName(), answer);
-		this.commandsReceived.incrementAndGet();
-		final AnswerResult answerResult = this.gameHistory.peekLastQuestion().getAnswerResult();
+		this.commands.remove(player);
+		final AnswerResult answerResult = this.gameHistory.getQhistory()
+			.peekLast()
+			.getQuestion()
+			.getAnswerResult();
 		final Integer playerId = this.players.get(player);
 		answerResult.setAnswer(playerId, answer);
+		this.tryNextFrame();
 	}
 
-	public void close(final BasePlayer player) {
+	public void close(final Player player) {
 		this.state.disconnect(this.players.get(player));
 	}
 
-	public void disconnect(final BasePlayer player) {
+	public void disconnect(final Player player, final Player robot) {
 		final Integer playerId = this.players.get(player);
 		this.state.disconnect(playerId);
-		final String name = player.getName();
-		final BasePlayer robot = this.playerFactory.createRobot(playerId, name, this);
-		robot.setReady(true);
 		this.players.remove(player);
 		this.players.put(robot, playerId);
 		LOG.debug("{} switched to robot", player);
-		switch (this.state.getCurrentFrame()) {
-		case SEND_BATTLETIPQUESTION_TIPINFO:
-		case SEND_SPREADINGTIP_TIPINFO: {
-			if (!this.gameHistory.isPlayerSendTip(playerId))
-				this.tip(robot, 0);
-			break;
-		}
-		case BATTLE_AREA_SELECTED: {
-			if (playerId.equals(this.state.getOffender()) && !this.state.isPlayerSelectArea(playerId)) {
-				final int area = this.state.getRandomArea(playerId);
-				this.selectArea(robot, area);
-			}
-			break;
-		}
-		case SEND_SPREADING_SELECTAREA_TO_WINNERTIP_2:
-		case SEND_SPREADING_SELECTAREA_TO_SECONDTIP:
-		case SPREADINGTIP_AREAS_SELECTED: {
-			if (playerId.equals(this.state.getOffender()) && !this.state.isPlayerSelectArea(playerId)) {
-				final int area = this.state.getRandomArea(playerId);
-				this.selectArea(robot, area);
-			}
-			break;
-		}
-		case SEND_FOUROPTIONSQUESTION_ANSWERRESULT: {
-			final AnswerResult answerresult = this.gameHistory.peekLastQuestion().getAnswerResult();
-			if ((playerId.equals(this.state.getOffender()) || playerId.equals(this.state.getDeffender()))
-					&& !answerresult.isAnswered(playerId))
-				this.answer(robot, 1);
-			break;
-		}
-		default:
-			break;
-		}
-		this.tryNextFrame();
+		final Object unansweredCommand = this.commands.remove(player);
+		final List<Object> messages;
+		if (unansweredCommand != null) {
+			this.commands.put(robot, unansweredCommand);
+			messages = Arrays.asList(unansweredCommand);
+		} else
+			messages = Collections.emptyList();
+		this.messageHandler.onOutEvent(new OutEvent(OutEvent.Kind.LISTEN, robot, messages));
 	}
 
 	public Integer getId() {
@@ -120,138 +111,145 @@ public final class Game {
 
 	private boolean isAllReady() {
 		boolean ready = true;
-		for (final BasePlayer player : this.players.keySet())
-			ready = ready && player.isReady() && player.getListenChannel() != null;
+		for (final Player player : this.players.keySet())
+			ready = ready && player.isReady();
+		LOG.trace("is all ready: {}", ready);
 		return ready;
 	}
 
-	public boolean isFinished() {
-		boolean isEmpty = true;
-		for (final BasePlayer player : this.players.keySet())
-			isEmpty = isEmpty && (player instanceof Robot);
-		return isEmpty;
-	}
-
-	public void message(final BasePlayer player, final String msg) {
+	public void message(final Player player, final String msg) {
 		final Integer from = this.players.get(player);
 		final Message message = new Message(from, 0, msg);
-		final List<Object> command = Arrays.asList(message);
-		for (final BasePlayer key : this.players.keySet())
-			this.onGameStateChange(key, command);
+		for (final Player element : this.players.keySet()) {
+			final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, element,
+					Arrays.asList(message));
+			this.messageHandler.onOutEvent(event);
+		}
 	}
 
-	private void moveOnNextFrame() {
-		this.commandsReceived.set(0);
-		for (final BasePlayer player : this.players.keySet())
-			player.setReady(false);
-		this.nextFrame();
-	}
-
-	// very shitty, but thats the way how it works
 	private void nextFrame() {
+		this.players.keySet()
+			.forEach(element -> element.setReady(false));
 		switch (this.state.getCurrentFrame()) {
 		case START: {
-			this.players.entrySet().forEach(player -> this.onGameStateChange(player.getKey(),
-					Arrays.asList(this.state, new Players(player.getValue(), this.players))));
+			for (final Map.Entry<Player, Integer> entry : this.players.entrySet()) {
+				final Integer playerId = entry.getValue();
+				final Player player = entry.getKey();
+				final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, player,
+						Arrays.asList(this.state, new Players(playerId, this.players)));
+				this.messageHandler.onOutEvent(event);
+			}
 			this.state.setCurrentFrame(GameFrame.PREPARE_BASES);
 			break;
 		}
 		case PREPARE_BASES: {
-			final List<Object> currentState = Arrays.asList(this.state);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
+			this.players.keySet()
+				.forEach(player -> this.messageHandler.onOutEvent(
+						new OutEvent(OutEvent.Kind.LISTEN, player, Arrays.asList(this.state))));
 			this.state.setCurrentFrame(GameFrame.BUILD_FIRST_BASE);
 			break;
 		}
 		case BUILD_FIRST_BASE: {
 			this.state.setOffender(1);
 			this.state.addBase(1);
-			final List<Object> currentState = Arrays.asList(this.state);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
+			this.players.keySet()
+				.forEach(player -> this.messageHandler.onOutEvent(
+						new OutEvent(OutEvent.Kind.LISTEN, player, Arrays.asList(this.state))));
 			this.state.setCurrentFrame(GameFrame.BUILD_SECOND_BASE);
 			break;
 		}
 		case BUILD_SECOND_BASE: {
 			this.state.setOffender(2);
 			this.state.addBase(2);
-			final List<Object> currentState = Arrays.asList(this.state);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
+			this.players.keySet()
+				.forEach(player -> this.messageHandler.onOutEvent(
+						new OutEvent(OutEvent.Kind.LISTEN, player, Arrays.asList(this.state))));
 			this.state.setCurrentFrame(GameFrame.BUILD_THIRD_BASE);
 			break;
 		}
 		case BUILD_THIRD_BASE: {
 			this.state.setOffender(3);
 			this.state.addBase(3);
-			final List<Object> currentState = Arrays.asList(this.state);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
+			this.players.keySet()
+				.forEach(player -> this.messageHandler.onOutEvent(
+						new OutEvent(OutEvent.Kind.LISTEN, player, Arrays.asList(this.state))));
 			this.state.setCurrentFrame(GameFrame.PREPARE_FOR_TIPQUESTION);
 			break;
 		}
 		case PREPARE_FOR_TIPQUESTION: {
 			this.state.setOffender(1);
 			this.state.clearSelections();
-			final List<Object> currentState = Arrays.asList(this.state);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
+			this.players.keySet()
+				.forEach(player -> this.messageHandler.onOutEvent(
+						new OutEvent(OutEvent.Kind.LISTEN, player, Arrays.asList(this.state))));
 			this.state.setCurrentFrame(GameFrame.SEND_SPREADINGTIP);
 			break;
 		}
 		case SEND_SPREADINGTIP: {
 			final TipQuestionContext tipQuestionContext = this.questionContextFactory
-					.createTipQuestionContext(Game.GAME_PLAYERS_COUNT);
+				.createTipQuestionContext(Game.GAME_PLAYERS_COUNT);
 			LOG.debug("{}", tipQuestionContext.getRawTip());
 			final TipQuestion tipQuestion = tipQuestionContext.getTipQuestion();
-			final List<Object> currentState = Arrays.asList(this.state, new CmdTip(Game.GAME_PLAYERS_COUNT),
-					tipQuestion);
-			this.gameHistory.offerTip(tipQuestionContext);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
-			this.state.setCurrentFrame(GameFrame.SEND_SPREADINGTIP_TIPINFO);
+			this.gameHistory.getTiphistory()
+				.offer(tipQuestionContext);
+			for (final Player player : this.players.keySet()) {
+				final CmdTip cmdTip = new CmdTip(Game.GAME_PLAYERS_COUNT);
+				final List<Object> messages = Arrays.asList(this.state, cmdTip, tipQuestion);
+				this.commands.put(player, cmdTip);
+				final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, player, messages);
+				this.messageHandler.onOutEvent(event);
+			}
+			this.state.setCurrentFrame(GameFrame.SEND_SPREADINGTIP_TIPINFO_TIPRESULT);
 			break;
 		}
-		case SEND_SPREADINGTIP_TIPINFO: {
-			final TipQuestionContext tipQuestionContext = this.gameHistory.peekLastTip();
-			final TipInfo tipinfo = tipQuestionContext.getTipinfo();
-			if (!tipinfo.isReady()) {
-				final List<Object> currentState = Arrays.asList(tipinfo);
-				this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
-				break;
-			} else
-				this.state.setCurrentFrame(GameFrame.SEND_SPREADINGTIP_TIPINFO_TIPRESULT);
-		}
 		case SEND_SPREADINGTIP_TIPINFO_TIPRESULT: {
-			final TipQuestionContext tipQuestionContext = this.gameHistory.peekLastTip();
+			final TipQuestionContext tipQuestionContext = this.gameHistory.getTiphistory()
+				.peekLast();
 			final TipInfo tipinfo = tipQuestionContext.getTipinfo();
 			final TipResult tipResult = tipQuestionContext.getTipResult();
-			final List<Object> currentState = Arrays.asList(this.state, tipinfo, tipResult);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
+			this.players.keySet()
+				.forEach(player -> {
+					final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, player,
+							Arrays.asList(this.state, tipinfo, tipResult));
+					this.messageHandler.onOutEvent(event);
+				});
 			this.state.setCurrentFrame(GameFrame.SEND_SPREADING_SELECTAREA_TO_WINNERTIP_1);
 			break;
 		}
 		case SEND_SPREADING_SELECTAREA_TO_WINNERTIP_1: {
-			final TipQuestionContext tipQuestionContext = this.gameHistory.peekLastTip();
-			final Integer winner = tipQuestionContext.getTipResult().getWinner();
+			final TipQuestionContext tipQuestionContext = this.gameHistory.getTiphistory()
+				.peekLast();
+			final Integer winner = tipQuestionContext.getTipResult()
+				.getWinner();
 			this.state.setOffender(winner);
 			this.sendSelectFirstArea(this.state);
 			this.state.setCurrentFrame(GameFrame.SEND_SPREADING_SELECTAREA_TO_WINNERTIP_2);
 			break;
 		}
 		case SEND_SPREADING_SELECTAREA_TO_WINNERTIP_2: {
-			final TipQuestionContext tipQuestionContext = this.gameHistory.peekLastTip();
-			final Integer winner = tipQuestionContext.getTipResult().getWinner();
+			final TipQuestionContext tipQuestionContext = this.gameHistory.getTiphistory()
+				.peekLast();
+			final Integer winner = tipQuestionContext.getTipResult()
+				.getWinner();
 			this.state.setOffender(winner);
 			this.sendSelectNextArea(this.state);
 			this.state.setCurrentFrame(GameFrame.SEND_SPREADING_SELECTAREA_TO_SECONDTIP);
 			break;
 		}
 		case SEND_SPREADING_SELECTAREA_TO_SECONDTIP: {
-			final TipQuestionContext tipQuestionContext = this.gameHistory.peekLastTip();
-			final Integer second = tipQuestionContext.getTipResult().getSecond();
+			final TipQuestionContext tipQuestionContext = this.gameHistory.getTiphistory()
+				.peekLast();
+			final Integer second = tipQuestionContext.getTipResult()
+				.getSecond();
 			this.state.setOffender(second);
 			this.sendSelectNextArea(this.state);
 			this.state.setCurrentFrame(GameFrame.SPREADINGTIP_AREAS_SELECTED);
 			break;
 		}
 		case SPREADINGTIP_AREAS_SELECTED: {
-			final List<Object> currentState = Arrays.asList(this.state);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
+			this.players.keySet()
+				.forEach(player -> this.messageHandler.onOutEvent(
+						new OutEvent(OutEvent.Kind.LISTEN, player, Arrays.asList(this.state))));
 			this.state.nextTipRound();
 			this.state.clearSelections();
 			if (this.state.isBattle()) {
@@ -264,8 +262,9 @@ public final class Game {
 		case NEW_BATTLE: {
 			this.state.battleStage();
 			this.state.switchBattleOffender();
-			final List<Object> currentState = Arrays.asList(this.state);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
+			this.players.keySet()
+				.forEach(player -> this.messageHandler.onOutEvent(
+						new OutEvent(OutEvent.Kind.LISTEN, player, Arrays.asList(this.state))));
 			this.state.setCurrentFrame(GameFrame.SEND_SELECT_BATTLE_AREA_TO_OFFENDER);
 			break;
 		}
@@ -276,25 +275,33 @@ public final class Game {
 			break;
 		}
 		case BATTLE_AREA_SELECTED: {
-			final List<Object> currentState = Arrays.asList(this.state);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
+			this.players.keySet()
+				.forEach(player -> this.messageHandler.onOutEvent(
+						new OutEvent(OutEvent.Kind.LISTEN, player, Arrays.asList(this.state))));
 			this.state.setCurrentFrame(GameFrame.SEND_FOUROPTIONSQUESTION_TO_OFFENDER_DEFFENDER);
 			break;
 		}
 		case SEND_FOUROPTIONSQUESTION_TO_OFFENDER_DEFFENDER: {
-			final QuestionContext questionContext = this.questionContextFactory.createQuestionContext(
-					GAME_PLAYERS_BATTLE_COUNT, this.state.getOffender(), this.state.getDeffender());
-			LOG.debug("{}", questionContext.getRawQuestion());
+			final QuestionContext questionContext = this.questionContextFactory
+				.createQuestionContext(GAME_PLAYERS_BATTLE_COUNT, this.state.getOffender(),
+						this.state.getDeffender());
+			LOG.debug("{}", questionContext.getQuestion()
+				.getQ());
 			final Question question = questionContext.getQuestion();
-			this.gameHistory.offerQuestion(questionContext);
+			this.gameHistory.getQhistory()
+				.offer(questionContext);
 			this.send4OptionQToOD(this.state, question);
 			this.state.setCurrentFrame(GameFrame.SEND_FOUROPTIONSQUESTION_ANSWERRESULT);
 			break;
 		}
 		case SEND_FOUROPTIONSQUESTION_ANSWERRESULT: {
-			final AnswerResult answerresult = this.gameHistory.peekLastQuestion().getAnswerResult();
-			final List<Object> currentState = Arrays.asList(this.state, answerresult);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
+			final AnswerResult answerresult = this.gameHistory.getQhistory()
+				.peekLast()
+				.getQuestion()
+				.getAnswerResult();
+			this.players.keySet()
+				.forEach(player -> this.messageHandler.onOutEvent(new OutEvent(OutEvent.Kind.LISTEN,
+						player, Arrays.asList(this.state, answerresult))));
 			switch (answerresult.getStatus()) {
 			case SUCCESS:
 				if (this.state.isSelectedAreaTower())
@@ -316,37 +323,32 @@ public final class Game {
 				break;
 			case NA:
 				break;
+			default:
+				break;
 			}
 			break;
 		}
 		case SEND_BATTLE_TIPQUESTION: {
 			final TipQuestionContext tipQuestionContext = this.questionContextFactory
-					.createTipQuestionContext(GAME_PLAYERS_BATTLE_COUNT);
+				.createTipQuestionContext(GAME_PLAYERS_BATTLE_COUNT);
 			LOG.debug("{}", tipQuestionContext.getRawTip());
-			this.gameHistory.offerTip(tipQuestionContext);
+			this.gameHistory.getTiphistory()
+				.offer(tipQuestionContext);
 			final TipQuestion tipQuestion = tipQuestionContext.getTipQuestion();
 			this.sendTipTo2Players(this.state, tipQuestion);
-			this.state.setCurrentFrame(GameFrame.SEND_BATTLETIPQUESTION_TIPINFO);
+			this.state.setCurrentFrame(GameFrame.SEND_BATTLETIPQUESTION_TIPINFO_TIPRESULT);
 			break;
 		}
-		case SEND_BATTLETIPQUESTION_TIPINFO: {
-			final TipQuestionContext tipQuestionContext = this.gameHistory.peekLastTip();
-			final TipInfo tipinfo = tipQuestionContext.getTipinfo();
-			if (tipinfo.isReady())
-				this.state.setCurrentFrame(GameFrame.SEND_BATTLETIPQUESTION_TIPINFO_TIPRESULT);
-			else {
-				final List<Object> currentState = Arrays.asList(tipinfo);
-				this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
-				break;
-			}
-		}
 		case SEND_BATTLETIPQUESTION_TIPINFO_TIPRESULT: {
-			final TipQuestionContext tipQuestionContext = this.gameHistory.peekLastTip();
+			final TipQuestionContext tipQuestionContext = this.gameHistory.getTiphistory()
+				.peekLast();
 			final TipInfo tipinfo = tipQuestionContext.getTipinfo();
 			final TipResult tipResult = tipQuestionContext.getTipResult();
-			final List<Object> currentState = Arrays.asList(this.state, tipinfo, tipResult);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
-			if (tipResult.getWinner().equals(this.state.getOffender())) {
+			this.players.keySet()
+				.forEach(player -> this.messageHandler.onOutEvent(new OutEvent(OutEvent.Kind.LISTEN,
+						player, Arrays.asList(this.state, tipinfo, tipResult))));
+			if (tipResult.getWinner()
+				.equals(this.state.getOffender())) {
 				if (this.state.isSelectedAreaTower())
 					this.state.setCurrentFrame(GameFrame.DESTROY_TOWER);
 				else {
@@ -361,18 +363,21 @@ public final class Game {
 		}
 		case DESTROY_TOWER: {
 			this.state.destroyTower();
-			final List<Object> currentState = Arrays.asList(this.state);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
+			this.players.keySet()
+				.forEach(player -> this.messageHandler.onOutEvent(
+						new OutEvent(OutEvent.Kind.LISTEN, player, Arrays.asList(this.state))));
 			if (this.state.isDeffenderDestroyed()) {
 				this.state.setCurrentFrame(GameFrame.PREPARE_NEXT_LEG);
 				this.state.decreaseActivePlayers();
 			} else
-				this.state.setCurrentFrame(GameFrame.SEND_FOUROPTIONSQUESTION_TO_OFFENDER_DEFFENDER);
+				this.state
+					.setCurrentFrame(GameFrame.SEND_FOUROPTIONSQUESTION_TO_OFFENDER_DEFFENDER);
 			break;
 		}
 		case PREPARE_NEXT_LEG: {
-			final List<Object> currentState = Arrays.asList(this.state);
-			this.players.keySet().forEach(player -> this.onGameStateChange(player, currentState));
+			this.players.keySet()
+				.forEach(player -> this.messageHandler.onOutEvent(
+						new OutEvent(OutEvent.Kind.LISTEN, player, Arrays.asList(this.state))));
 			final int currentBattle = this.state.getRound();
 			this.state.clearSelections();
 			this.state.prepareNextLeg();
@@ -399,21 +404,16 @@ public final class Game {
 		}
 	}
 
-	private void onGameStateChange(final BasePlayer player, final List<Object> o) {
-		final BaseChannel channel = player.getListenChannel();
-		if (channel != null) {
-			final List<Object> list = new ArrayList<>();
-			list.add(channel);
-			list.addAll(o);
-			player.handle(list);
-		}
+	public void ready() {
+		this.tryNextFrame();
 	}
 
-	public void selectArea(final BasePlayer player, final int area) {
+	public void selectArea(final Player player, final int area) {
 		LOG.debug("{} select area: {}", player.getName(), area);
-		this.commandsReceived.incrementAndGet();
+		this.commands.remove(player);
 		final Integer playerId = this.players.get(player);
-		if (this.state.getCurrentFrame().getState() == 4) {
+		if (this.state.getCurrentFrame()
+			.getState() == 4) {
 			if (area == 0) {
 				final int randomArea = this.state.getRandomArea(playerId);
 				LOG.debug("{} auto select area: {}", player.getName(), randomArea);
@@ -424,35 +424,41 @@ public final class Game {
 			final int randomArea = this.state.getRandomArea(playerId);
 			LOG.debug("{} auto select area: {}", player.getName(), randomArea);
 			this.state.occupyEmptyArea(playerId, randomArea);
-			this.gameHistory.offerWinner(new WinnerSelect(playerId, randomArea));
+			this.gameHistory.getSpreadingHistory()
+				.offer(new WinnerSelect(playerId, randomArea));
 		} else {
 			this.state.occupyEmptyArea(playerId, area);
-			this.gameHistory.offerWinner(new WinnerSelect(playerId, area));
+			this.gameHistory.getSpreadingHistory()
+				.offer(new WinnerSelect(playerId, area));
 		}
+		this.tryNextFrame();
 	}
 
 	private void send4OptionQToOD(final GameState state, final Question question) {
 		LOG.debug("offender: {}, deffender {}", state.getOffender(), state.getDeffender());
-		for (final Map.Entry<BasePlayer, Integer> entry : this.players.entrySet()) {
+		for (final Map.Entry<Player, Integer> entry : this.players.entrySet()) {
 			final Integer playerId = entry.getValue();
+			final Player player = entry.getKey();
 			if (playerId.equals(state.getOffender()) || playerId.equals(state.getDeffender())) {
-				final List<Object> currentState = Arrays.asList(state, new CmdAnswer(), question);
-				this.onGameStateChange(entry.getKey(), currentState);
-			} else {
-				final List<Object> currentState = Arrays.asList(state, question);
-				this.onGameStateChange(entry.getKey(), currentState);
-			}
+				final CmdAnswer cmdAnswer = new CmdAnswer();
+				final List<Object> messages = Arrays.asList(state, cmdAnswer, question);
+				this.commands.put(player, cmdAnswer);
+				this.messageHandler
+					.onOutEvent(new OutEvent(OutEvent.Kind.LISTEN, player, messages));
+			} else
+				this.messageHandler.onOutEvent(
+						new OutEvent(OutEvent.Kind.LISTEN, player, Arrays.asList(state, question)));
 		}
 	}
 
 	private void sendFinish(final GameState state) {
 		final String placings = StringUtils.join(state.getCurrentRanking());
-		final Map<Integer, BasePlayer> inverse = new HashMap<>(Game.GAME_PLAYERS_COUNT);
-		for (final Entry<BasePlayer, Integer> entry : this.players.entrySet())
+		final Map<Integer, Player> inverse = new HashMap<>(Game.GAME_PLAYERS_COUNT);
+		for (final Entry<Player, Integer> entry : this.players.entrySet())
 			inverse.put(entry.getValue(), entry.getKey());
-		for (final Entry<BasePlayer, Integer> entry : this.players.entrySet()) {
+		for (final Entry<Player, Integer> entry : this.players.entrySet()) {
 			//@formatter:off
-			final GameOver gameOver = 
+			final GameOver gameOver =
 					new GameOver.Builder()
 					.setAnsCnt(100)
 					.setAoj(100)
@@ -477,79 +483,113 @@ public final class Game {
 					.setVepTipCnt(0.0)
 					.build();
 			//@formatter:on
-			final List<Object> command = Arrays.asList(state, gameOver);
-			this.onGameStateChange(entry.getKey(), command);
+			final Player player = entry.getKey();
+			this.messageHandler.onOutEvent(
+					new OutEvent(OutEvent.Kind.LISTEN, player, Arrays.asList(state, gameOver)));
 		}
 	}
 
 	private void sendSelectBattle(final GameState state) {
-		for (final Map.Entry<BasePlayer, Integer> entry : this.players.entrySet()) {
+		for (final Map.Entry<Player, Integer> entry : this.players.entrySet()) {
 			final Integer playerId = entry.getValue();
+			final Player player = entry.getKey();
 			if (playerId.equals(state.getOffender())) {
 				final Set<Integer> available = state.getAvailableAreas(playerId);
-				final List<Object> command = Arrays.asList(state, new CmdSelect(available, 0));
-				this.onGameStateChange(entry.getKey(), command);
+				final CmdSelect cmdSelect = new CmdSelect(available, 0);
+				final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, player,
+						Arrays.asList(state, cmdSelect));
+				this.commands.put(player, cmdSelect);
+				this.messageHandler.onOutEvent(event);
 			} else {
-				final List<Object> command = Arrays.asList(state);
-				this.onGameStateChange(entry.getKey(), command);
+				final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, player,
+						Arrays.asList(state));
+				this.messageHandler.onOutEvent(event);
 			}
 		}
 	}
 
 	private void sendSelectFirstArea(final GameState state) {
-		for (final Entry<BasePlayer, Integer> entry : this.players.entrySet()) {
+		for (final Entry<Player, Integer> entry : this.players.entrySet()) {
 			final Integer playerId = entry.getValue();
+			final Player player = entry.getKey();
 			if (playerId.equals(state.getOffender())) {
 				final Set<Integer> available = state.getAvailableAreas(playerId);
-				final List<Object> ssttw1o = Arrays.asList(state, new CmdSelect(available, 0));
-				this.onGameStateChange(entry.getKey(), ssttw1o);
+				final CmdSelect cmdSelect = new CmdSelect(available, 0);
+				final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, player,
+						Arrays.asList(state, cmdSelect));
+				this.commands.put(player, cmdSelect);
+				this.messageHandler.onOutEvent(event);
 			} else {
-				final List<Object> ssttw1 = Arrays.asList(state);
-				this.onGameStateChange(entry.getKey(), ssttw1);
+				final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, player,
+						Arrays.asList(state));
+				this.messageHandler.onOutEvent(event);
 			}
 		}
 	}
 
 	private void sendSelectNextArea(final GameState state) {
-		for (final Map.Entry<BasePlayer, Integer> entry : this.players.entrySet()) {
-			final WinnerSelect winnerSelect = this.gameHistory.peekLastWinner();
+		for (final Map.Entry<Player, Integer> entry : this.players.entrySet()) {
+			final WinnerSelect winnerSelect = this.gameHistory.getSpreadingHistory()
+				.getLast();
 			final Integer playerId = entry.getValue();
+			final Player player = entry.getKey();
 			if (playerId.equals(state.getOffender())) {
 				final Set<Integer> available = state.getAvailableAreas(playerId);
-				final List<Object> ssttw1o = Arrays.asList(state, new CmdSelect(available, 0), winnerSelect);
-				this.onGameStateChange(entry.getKey(), ssttw1o);
+				final CmdSelect cmdSelect = new CmdSelect(available, 0);
+				final List<Object> messages = Arrays.asList(state, cmdSelect, winnerSelect);
+				final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, player, messages);
+				this.commands.put(player, cmdSelect);
+				this.messageHandler.onOutEvent(event);
 			} else {
-				final List<Object> ssttw1 = Arrays.asList(state, winnerSelect);
-				this.onGameStateChange(entry.getKey(), ssttw1);
+				final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, player,
+						Arrays.asList(state, winnerSelect));
+				this.messageHandler.onOutEvent(event);
 			}
 		}
 	}
 
 	private void sendTipTo2Players(final GameState state, final TipQuestion tipQuestion) {
-		for (final Entry<BasePlayer, Integer> entry : this.players.entrySet()) {
+		for (final Entry<Player, Integer> entry : this.players.entrySet()) {
 			final Integer playerId = entry.getValue();
+			final Player player = entry.getKey();
 			if (playerId.equals(state.getOffender()) || playerId.equals(state.getDeffender())) {
-				final List<Object> command = Arrays.asList(state, new CmdTip(2), tipQuestion);
-				this.onGameStateChange(entry.getKey(), command);
+				final CmdTip cmdTip = new CmdTip(2);
+				final List<Object> messages = Arrays.asList(state, cmdTip, tipQuestion);
+				final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, player, messages);
+				this.commands.put(player, cmdTip);
+				this.messageHandler.onOutEvent(event);
 			} else {
-				final List<Object> command = Arrays.asList(state, tipQuestion);
-				this.onGameStateChange(entry.getKey(), command);
+				final List<Object> messages = Arrays.asList(state, tipQuestion);
+				final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, player, messages);
+				this.messageHandler.onOutEvent(event);
 			}
 		}
 	}
 
-	public void tip(final BasePlayer player, final int tip) {
+	public void start() {
+		this.tryNextFrame();
+	}
+
+	public void tip(final Player player, final int tip) {
 		LOG.debug("{} tip: {}", player.getName(), tip);
-		this.commandsReceived.incrementAndGet();
+		this.commands.remove(player);
 		final int playerId = this.players.get(player);
-		final TipQuestionContext tipQuestionContext = this.gameHistory.peekLastTip();
+		final TipQuestionContext tipQuestionContext = this.gameHistory.getTiphistory()
+			.peekLast();
 		final TipInfo tipinfo = tipQuestionContext.getTipinfo();
 		final TipResult tipResult = tipQuestionContext.getTipResult();
-		tipinfo.setTipInfo(playerId, tip);
+		tipinfo.setTip(playerId, tip);
 		if (tipinfo.isReady()) {
 			tipinfo.calculate();
 			tipResult.setResults(tipinfo.getAnswer(), tipinfo.getTipAnswers());
-		}
+		} else
+			this.players.keySet()
+				.forEach(element -> {
+					final OutEvent event = new OutEvent(OutEvent.Kind.LISTEN, element,
+							Arrays.asList(tipinfo));
+					this.messageHandler.onOutEvent(event);
+				});
+		this.tryNextFrame();
 	}
 
 	@Override
@@ -557,37 +597,68 @@ public final class Game {
 		return this.state.toString();
 	}
 
-	public void tryNextFrame() {
-		final boolean allReady = this.isAllReady();
-		if (allReady)
-			switch (this.state.getCurrentFrame()) {
-			case START:
-			case PREPARE_BASES:
-			case BUILD_FIRST_BASE:
-			case BUILD_SECOND_BASE:
-			case BUILD_THIRD_BASE:
-			case PREPARE_FOR_TIPQUESTION:
-			case SEND_SPREADINGTIP:
-			case SEND_SPREADING_SELECTAREA_TO_WINNERTIP_1:
-			case NEW_BATTLE:
-			case SEND_SELECT_BATTLE_AREA_TO_OFFENDER:
-			case SEND_FOUROPTIONSQUESTION_TO_OFFENDER_DEFFENDER:
-			case SEND_BATTLE_TIPQUESTION:
-			case PREPARE_NEXT_LEG:
-			case DESTROY_TOWER:
-			case FINISH_GAME:
-			case WAITING_FOR_CLOSING:
-				if (this.commandsReceived.get() == 0)
-					this.moveOnNextFrame();
-				break;
-			case SEND_FOUROPTIONSQUESTION_ANSWERRESULT:
-				if (this.commandsReceived.get() == 2)
-					this.moveOnNextFrame();
-				break;
-			default:
-				if (this.commandsReceived.get() == 1)
-					this.moveOnNextFrame();
-				break;
-			}
+	private void tryNextFrame() {
+		if (this.isAllReady() && this.commands.isEmpty())
+			this.nextFrame();
+	}
+
+	public static final class Builder {
+		int id;
+
+		Map<Player, Integer> players;
+
+		GameState state;
+
+		GameRoomType type;
+
+		GameHistory gameHistory;
+
+		IQuestionContextFactory questionContextFactory;
+
+		IOutEventHandler messageHandler;
+
+		public Game build() {
+			return new Game(this);
+		}
+
+		public Builder setGameHistory(final GameHistory gameHistory) {
+			this.gameHistory = gameHistory;
+			return this;
+		}
+
+		public Builder setId(final int id) {
+			this.id = id;
+			return this;
+		}
+
+		public Builder setMessageHandler(final IOutEventHandler messageHandler) {
+			this.messageHandler = messageHandler;
+			return this;
+		}
+
+		public Builder setPlayers(final Map<Player, Integer> players) {
+			this.players = players;
+			return this;
+		}
+
+		public Builder setQuestionContextFactory(
+				final IQuestionContextFactory questionContextFactory) {
+			this.questionContextFactory = questionContextFactory;
+			return this;
+		}
+
+		public Builder setState(final GameState state) {
+			this.state = state;
+			return this;
+		}
+
+		public Builder setType(final GameRoomType type) {
+			this.type = type;
+			return this;
+		}
+	}
+
+	public enum Stage {
+		SPREADING, BATTLE, LAST_ROUND;
 	}
 }
