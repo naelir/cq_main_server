@@ -64,7 +64,7 @@ public class Application {
 
 	private static final String T_ENDPOINT = "--tEndpoint";
 
-	private static final int SCHEDULER_THREAD_COUNT = 1;
+	private static final int SCHEDULER_THREAD_COUNT = 3;
 
 	private static final int FLASH_TCP_PORT = 2002;
 

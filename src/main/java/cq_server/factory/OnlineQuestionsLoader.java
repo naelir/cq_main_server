@@ -1,6 +1,7 @@
 package cq_server.factory;
 
 import java.io.IOException;
+import java.text.MessageFormat;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.ObjectMapper;
 import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
 
 import cq_server.model.Questions;
 import cq_server.model.RawQuestion;
@@ -45,6 +47,64 @@ public class OnlineQuestionsLoader implements IQuestionsLoader {
 
 	@Override
 	public Questions load() {
+		configureUnirest();
+		long start = System.currentTimeMillis();
+		while (true) {
+			try {
+				Questions questions = getQuestions();
+				if (isEmpty(questions) == false || (System.currentTimeMillis() - start > 300000)) {
+					return questions;
+				}
+				Thread.sleep(60000);
+			} catch (final InterruptedException e) {
+				LOG.error("error:", e);
+				Thread.currentThread().interrupt();
+			}
+		}
+	}
+
+	private boolean isEmpty(Questions questions) {
+		return questions.getRawQuestions().isEmpty() || questions.getTips().isEmpty();
+	}
+
+	private Questions getQuestions() {
+		Questions questions = new Questions(new RawQuestion[] {}, new RawTip[] {});
+		try {
+			final long second = System.currentTimeMillis() / 1000;
+			final String timeHash = DigestUtils.md5DigestAsHex(String.valueOf(second).getBytes());
+			LOG.debug("current second: {}, current timehash: {}", second, timeHash);
+			final RawQuestion[] selectables = retrieveSelectables(timeHash);
+			final RawTip[] tips = retrieveTips(timeHash);
+			questions = new Questions(selectables, tips);
+		} catch (Exception e) {
+			LOG.error("error when loading questions:", e);
+		}
+		return questions;
+	}
+
+	private RawTip[] retrieveTips(final String timeHash) throws UnirestException {
+		final HttpResponse<RawTip[]> tipResponse =
+				Unirest
+				.get(this.tipsApiEndpoint)
+				.header(this.userNameMd5HashHeader, this.userMd5)
+		        .header(this.timeMd5HashHeader, timeHash)
+		        .asObject(RawTip[].class);
+		final RawTip[] tips = tipResponse.getBody();
+		return tips;
+	}
+
+	private RawQuestion[] retrieveSelectables(final String timeHash) throws UnirestException {
+		final HttpResponse<RawQuestion[]> questionsResponse =
+				Unirest
+				.get(this.questionsApiEndpoint)
+				.header(this.userNameMd5HashHeader, this.userMd5)
+		        .header(this.timeMd5HashHeader, timeHash)
+				.asObject(RawQuestion[].class);
+		final RawQuestion[] questions = questionsResponse.getBody();
+		return questions;
+	}
+
+	private void configureUnirest() {
 		Unirest.setObjectMapper(new ObjectMapper() {
 			private final com.fasterxml.jackson.databind.ObjectMapper jacksonObjectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
@@ -53,7 +113,7 @@ public class OnlineQuestionsLoader implements IQuestionsLoader {
 				try {
 					return this.jacksonObjectMapper.readValue(value, valueType);
 				} catch (final IOException e) {
-					LOG.error("{}", e);
+					LOG.error(MessageFormat.format("error while reading value {0}, type {1}:", value, valueType), e);
 					throw new RuntimeException(e);
 				}
 			}
@@ -63,34 +123,10 @@ public class OnlineQuestionsLoader implements IQuestionsLoader {
 				try {
 					return this.jacksonObjectMapper.writeValueAsString(value);
 				} catch (final JsonProcessingException e) {
-					LOG.error("{}", e);
+					LOG.error(MessageFormat.format("error while writing value {0}:", value), e);
 					throw new RuntimeException(e);
 				}
 			}
 		});
-		try {
-			final long second = System.currentTimeMillis() / 1000;
-			final String timeHash = DigestUtils.md5DigestAsHex(String.valueOf(second).getBytes());
-			LOG.debug("current second: {}, current timehash: {}", second, timeHash);
-			final HttpResponse<RawQuestion[]> questionsResponse =
-					Unirest
-					.get(this.questionsApiEndpoint)
-					.header(this.userNameMd5HashHeader, this.userMd5)
-			        .header(this.timeMd5HashHeader, timeHash)
-					.asObject(RawQuestion[].class);
-			final RawQuestion[] questions = questionsResponse.getBody();
-
-			final HttpResponse<RawTip[]> tipResponse =
-					Unirest
-					.get(this.tipsApiEndpoint)
-					.header(this.userNameMd5HashHeader, this.userMd5)
-			        .header(this.timeMd5HashHeader, timeHash)
-			        .asObject(RawTip[].class);
-			final RawTip[] tips = tipResponse.getBody();
-			return new Questions(questions, tips);
-		} catch (final Exception e) {
-			LOG.error("error:", e);
-		}
-		return new Questions(new RawQuestion[] {}, new RawTip[] {});
 	}
 }

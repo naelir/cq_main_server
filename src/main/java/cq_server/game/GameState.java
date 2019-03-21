@@ -304,7 +304,7 @@ public class GameState {
 	@XmlAttribute(name = "BASES")
 	public String getBases() {
 		final StringBuilder builder = new StringBuilder(36);
-		for (int i = 0; i < Game.GAME_PLAYERS_COUNT; i++)
+		for (int i = 0; i < this.bases.size(); i++)
 			builder.append(String.format("%02X", this.bases.get(i + 1)
 				.get()));
 		return builder.toString();
@@ -371,12 +371,16 @@ public class GameState {
 
 	@XmlAttribute(name = "POINTS")
 	public String getPoints() {
-		return String.format("%d,%d,%d", this.points.get(1)
-			.get(),
-				this.points.get(2)
-					.get(),
-				this.points.get(3)
-					.get());
+		if (this.points.isEmpty()) {
+			return null;
+		} else {
+			return String.format("%d,%d,%d", this.points.get(1)
+				.get(),
+					this.points.get(2)
+						.get(),
+					this.points.get(3)
+						.get());
+		}
 	}
 
 	public int getRandomArea(final int player) {
@@ -409,7 +413,7 @@ public class GameState {
 	@XmlAttribute(name = "SEL")
 	public String getSel() {
 		final StringBuilder builder = new StringBuilder(36);
-		for (int i = 0; i < Game.GAME_PLAYERS_COUNT; i++)
+		for (int i = 0; i < this.selections.size(); i++)
 			builder.append(String.format("%02X", this.selections.get(i + 1)
 				.get()));
 		return builder.toString();
