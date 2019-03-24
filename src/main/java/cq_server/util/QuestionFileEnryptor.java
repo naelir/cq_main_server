@@ -1,4 +1,4 @@
-package cq_server.factory;
+package cq_server.util;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -37,10 +37,10 @@ public class QuestionFileEnryptor {
 		final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
 		textEncryptor.setPassword(this.password);
 		try (
-			InputStream is = Files.newInputStream(this.from, StandardOpenOption.READ);
+			InputStream is = Files.newInputStream(this.from, StandardOpenOption.CREATE, StandardOpenOption.READ);
 			InputStreamReader isr = new InputStreamReader(is, this.encoding);
 			BufferedReader br = new BufferedReader(isr);
-			OutputStream os = Files.newOutputStream(this.to, StandardOpenOption.WRITE);
+			OutputStream os = Files.newOutputStream(this.to, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
 			OutputStreamWriter osw = new OutputStreamWriter(os, this.encoding);
 			BufferedWriter bw = new BufferedWriter(osw);
 		) {
