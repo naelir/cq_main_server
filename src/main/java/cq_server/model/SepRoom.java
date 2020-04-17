@@ -13,7 +13,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cq_server.game.Game;
+import cq_server.util.Assertions;
 
 /*
  * <SEPROOM ID="4687388" MAP="FR" U1="SayaClau" U2="" U3="" DEPU1="SayaClau"
@@ -27,11 +27,11 @@ public final class SepRoom {
 
 	private Integer id;
 
-	private List<String> invited;
-
 	private CountryMap map;
 
-	private List<String> names;
+    private List<String> invited;
+    
+    private List<String> accepted;
 
 	private Integer oopp;
 
@@ -41,29 +41,36 @@ public final class SepRoom {
 
 	private RoomSettings settings;
 
+    private int expectedHumans;
+
 	protected SepRoom() {
 	}
 
 	public SepRoom(
 			final int id,
 			final List<Player> players,
-			final List<String> names,
-			final RoomSettings settings) {
+            final List<String> invited,
+            final List<String> accepted,
+			final RoomSettings settings,
+			final int expectedHumans) {
+        Assertions.atLeast(invited, 3);
 		this.id = id;
 		this.players = new CopyOnWriteArraySet<>(players);
-		this.names = new CopyOnWriteArrayList<>(names);
-		this.invited = new CopyOnWriteArrayList<>(names);
+        this.invited = new CopyOnWriteArrayList<>(invited);
+        this.accepted = new CopyOnWriteArrayList<>(accepted);
 		this.map = CountryMap.BG;
 		this.oopp = settings.getOopp().getValue();
 		this.personal = 1;
 		this.settings = settings;
+        this.expectedHumans = expectedHumans;
+
 	}
 
 	public void add(final Player player) {
-		if (this.players.size() >= Game.GAME_PLAYERS_COUNT) {
-		} else {
+		if (this.players.size() < this.expectedHumans) {
 			this.players.add(player);
-			this.names.add(player.getName());
+			this.invited.add(player.getName());
+			this.accepted.add(player.getName());
 		}
 	}
 
@@ -73,18 +80,28 @@ public final class SepRoom {
 
 	@XmlAttribute(name = "DEPU1")
 	public String getDepu1() {
-		if (this.players.size() >= 1)
-			return this.names.get(0);
+		if (this.invited.size() >= 1)
+			return this.invited.get(0);
 		return null;
 	}
+
+    @XmlAttribute(name = "DEPU2")
+    public String getDepu2() {
+        if (this.invited.size() >= 2)
+            return this.invited.get(1);
+        return null;
+    }
+
+    @XmlAttribute(name = "DEPU3")
+    public String getDepu3() {
+        if (this.invited.size() >= 3)
+            return this.invited.get(2);
+        return null;
+    }
 
 	@XmlAttribute(name = "ID")
 	public int getId() {
 		return this.id;
-	}
-
-	public List<String> getInvited() {
-		return this.invited;
 	}
 
 	@XmlAttribute(name = "MAP")
@@ -117,27 +134,33 @@ public final class SepRoom {
 
 	@XmlAttribute(name = "U1")
 	public String getU1() {
-		if (this.players.size() >= 1)
-			return this.names.get(0);
-		return null;
+	    if (this.accepted.size() > 0) {
+	        return this.accepted.get(0);
+        } else {
+            return null;
+        }
 	}
 
 	@XmlAttribute(name = "U2")
 	public String getU2() {
-		if (this.players.size() >= 2)
-			return this.names.get(1);
-		return null;
+        if (this.accepted.size() > 1) {
+            return this.accepted.get(1);
+        } else {
+            return null;
+        }
 	}
 
 	@XmlAttribute(name = "U3")
 	public String getU3() {
-		if (this.players.size() >= 3)
-			return this.names.get(2);
-		return null;
+        if (this.accepted.size() > 2) {
+            return this.accepted.get(2);
+        } else {
+            return null;
+        }
 	}
 
 	public boolean isFull() {
-		return OOPP.HASROBOT.equals(this.settings.getOopp()) || this.players.size() == Game.GAME_PLAYERS_COUNT;
+		return this.players.size() == this.expectedHumans;
 	}
 
 	public boolean remove(final Player player) {

@@ -2,8 +2,10 @@ package cq_server.model;
 
 import java.util.Arrays;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class RawQuestion {
 
 	@JsonProperty("question")
@@ -16,7 +18,6 @@ public final class RawQuestion {
 	private int trueAnswer;
 
 	public RawQuestion() {
-		// TODO Auto-generated constructor stub
 	}
 
 	public RawQuestion(final String question, final String[] options, final int trueAnswer) {

@@ -5,7 +5,6 @@ import java.text.MessageFormat;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.DigestUtils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.mashape.unirest.http.HttpResponse;
@@ -13,11 +12,13 @@ import com.mashape.unirest.http.ObjectMapper;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 
+import cq_server.model.Option;
 import cq_server.model.Questions;
 import cq_server.model.RawQuestion;
 import cq_server.model.RawTip;
+import cq_server.model.Selectable;
+import cq_server.model.Tipable;
 
-//@formatter:off
 public class OnlineQuestionsLoader implements IQuestionsLoader {
 	private static final Logger LOG = LoggerFactory.getLogger(OnlineQuestionsLoader.class);
 
@@ -25,24 +26,13 @@ public class OnlineQuestionsLoader implements IQuestionsLoader {
 
 	private static final String USER_NAME_MD5_HASH_HEADER = "user_name_md5_hash";
 
-	private static final String TIME_MD5_HASH_HEADER = "time_md5_hash";
-
 	private final String questionsApiEndpoint;
 
 	private final String tipsApiEndpoint;
 
-	private final String userMd5;
-
-	private final String userNameMd5HashHeader;
-
-	private final String timeMd5HashHeader;
-
 	public OnlineQuestionsLoader(final String questionsApiEndpoint, final String tipsApiEndpoint) {
 		this.questionsApiEndpoint = questionsApiEndpoint;
 		this.tipsApiEndpoint = tipsApiEndpoint;
-		this.userMd5 = DEFAULT_USER_MD5;
-		this.userNameMd5HashHeader = USER_NAME_MD5_HASH_HEADER;
-		this.timeMd5HashHeader = TIME_MD5_HASH_HEADER;
 	}
 
 	@Override
@@ -70,11 +60,8 @@ public class OnlineQuestionsLoader implements IQuestionsLoader {
 	private Questions getQuestions() {
 		Questions questions = new Questions(new RawQuestion[] {}, new RawTip[] {});
 		try {
-			final long second = System.currentTimeMillis() / 1000;
-			final String timeHash = DigestUtils.md5DigestAsHex(String.valueOf(second).getBytes());
-			LOG.debug("current second: {}, current timehash: {}", second, timeHash);
-			final RawQuestion[] selectables = retrieveSelectables(timeHash);
-			final RawTip[] tips = retrieveTips(timeHash);
+			final RawQuestion[] selectables = adapt(retrieveSelectables());
+			final RawTip[] tips = adapt(retrieveTips());
 			questions = new Questions(selectables, tips);
 		} catch (Exception e) {
 			LOG.error("error when loading questions:", e);
@@ -82,25 +69,53 @@ public class OnlineQuestionsLoader implements IQuestionsLoader {
 		return questions;
 	}
 
-	private RawTip[] retrieveTips(final String timeHash) throws UnirestException {
-		final HttpResponse<RawTip[]> tipResponse =
+	private RawTip[] adapt(Tipable[] t) {
+	    RawTip[] tips = new RawTip[t.length];
+
+	    for (int i = 0; i < t.length; i++) {
+            Tipable tipable = t[i];
+            tips[i] = new RawTip(tipable.getQuestion(), tipable.getAnswer());
+        }
+        return tips;
+    }
+
+    private RawQuestion[] adapt(Selectable[] selectables) {
+        RawQuestion[] questions = new RawQuestion[selectables.length];
+        for (int i = 0; i < selectables.length; i++) {
+            Selectable selectable = selectables[i];
+            Option[] so = selectable.getOptions();
+            String[] options = new String[so.length];
+            int trueAnswer = 1;
+            for (int j = 0; j < so.length; j++) {
+                Option option = so[j];
+                options[j] = option.getText();
+                if (option.isCorrect()) {
+                    trueAnswer = j + 1;
+                }
+            }
+            String question = selectable.getQuestion();
+            questions[i] = new RawQuestion(question, options, trueAnswer);
+        }
+        return questions;
+    }
+
+    private Tipable[] retrieveTips() throws UnirestException {
+		final HttpResponse<Tipable[]> tipResponse =
 				Unirest
 				.get(this.tipsApiEndpoint)
-				.header(this.userNameMd5HashHeader, this.userMd5)
-		        .header(this.timeMd5HashHeader, timeHash)
-		        .asObject(RawTip[].class);
-		final RawTip[] tips = tipResponse.getBody();
+				.header(USER_NAME_MD5_HASH_HEADER, DEFAULT_USER_MD5)
+		        .asObject(Tipable[].class);
+		final Tipable[] tips = tipResponse.getBody();
 		return tips;
 	}
 
-	private RawQuestion[] retrieveSelectables(final String timeHash) throws UnirestException {
-		final HttpResponse<RawQuestion[]> questionsResponse =
+	private Selectable[] retrieveSelectables() throws UnirestException {
+		final HttpResponse<Selectable[]> questionsResponse =
 				Unirest
 				.get(this.questionsApiEndpoint)
-				.header(this.userNameMd5HashHeader, this.userMd5)
-		        .header(this.timeMd5HashHeader, timeHash)
-				.asObject(RawQuestion[].class);
-		final RawQuestion[] questions = questionsResponse.getBody();
+                .header(USER_NAME_MD5_HASH_HEADER, DEFAULT_USER_MD5)
+				.asObject(Selectable[].class);
+		final Selectable[] questions = questionsResponse.getBody();
 		return questions;
 	}
 

@@ -17,7 +17,7 @@ public class CommonTests {
 		System.out.println(warOrder);
 		final List<Integer> list = new CopyOnWriteArrayList<>(Arrays.asList(2, 3, 2));
 		System.out.println(list);
-		list.remove(new Integer(2));
+		list.remove(2);
 		System.out.println(list);
 	}
 }

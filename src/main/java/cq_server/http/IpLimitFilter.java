@@ -30,8 +30,8 @@ public class IpLimitFilter implements Filter {
 	public void doFilter(final ServletRequest servletRequest, final ServletResponse servletResponse,
 			final FilterChain filterChain) throws IOException, ServletException {
 		final HttpServletRequest request = this.getHttpServletRequest(servletRequest);
-		final boolean isRestServicePostCall = this.isRestPublicUserServicePostCall(request);
-		if (isRestServicePostCall) {
+		final boolean isRestrictedCall = this.isRestrictedCall(request);
+		if (isRestrictedCall) {
 			final String ipAddress = request.getRemoteAddr();
 			this.ipTimeWindowManager.addIpRequest(ipAddress);
 			if (this.ipTimeWindowManager.ipAddressReachedLimit(ipAddress)) {
@@ -58,7 +58,7 @@ public class IpLimitFilter implements Filter {
 	public void init(final FilterConfig filterConfig) throws ServletException {
 	}
 
-	private boolean isRestPublicUserServicePostCall(final HttpServletRequest request) {
+	private boolean isRestrictedCall(final HttpServletRequest request) {
 		if (request != null) {
 			final String requestedUri = request.getRequestURI();
 			return Arrays.stream(LIMITED_PATHS).anyMatch(limitedPath -> requestedUri.startsWith(limitedPath));

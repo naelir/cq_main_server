@@ -2,6 +2,7 @@ package cq_server.task;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -76,17 +77,17 @@ public final class WaithallRefreshTask {
 	}
 
 	public static final class Builder {
-		Map<Integer, Player> loggedPlayers;
+		Map<Integer, Player> loggedPlayers = Collections.emptyMap();
 
-		Map<Integer, Chat> chats;
+		Map<Integer, Chat> chats = Collections.emptyMap();
 
 		UserList usersList;
 
 		IOutEventHandler outEventHandler;
 
-		Map<Integer, SepRoom> separateRooms;
+		Map<Integer, SepRoom> separateRooms = Collections.emptyMap();
 
-		Map<Integer, GameRoom> gameRooms;
+		Map<Integer, GameRoom> gameRooms = Collections.emptyMap();
 
 		public WaithallRefreshTask build() {
 			return new WaithallRefreshTask(this);

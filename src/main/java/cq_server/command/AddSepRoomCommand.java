@@ -3,14 +3,14 @@ package cq_server.command;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
+
+import org.apache.maven.shared.utils.StringUtils;
 
 import cq_server.event.AddSeparateRoomEvent;
 import cq_server.model.CountryMap;
 import cq_server.model.OOPP;
 import cq_server.model.OutEvent;
 import cq_server.model.Player;
-import cq_server.model.Player.Type;
 import cq_server.model.RoomSettings;
 import cq_server.model.SepRoom;
 
@@ -31,19 +31,34 @@ public final class AddSepRoomCommand extends BaseCommand implements ICommand<Add
 			.setSubRules(event.getSubRules())
 			.setSeppmessageid(0)
 			.build();
-		final List<Player> players = new ArrayList<>(3);
+        final List<Player> players = new ArrayList<>(3);
+        final List<String> invitedNames = new ArrayList<>(3);
+        final List<String> acceptedNames = new ArrayList<>(3);
 		players.add(player);
-		if (event.getOopp()
-			.equals(OOPP.HASROBOT))
-			for (int i = 0; i < 2; i++) {
-				final Player robot = this.playerFactory.createPlayer(Type.ROBOT, null,
-						String.format("robot-%d", i + 1));
-				players.add(robot);
-			}
-		final List<String> names = players.stream()
-			.map(element -> element.getName())
-			.collect(Collectors.toList());
-		final SepRoom room = new SepRoom(id, players, names, settings);
+		invitedNames.add(player.getName());
+		acceptedNames.add(player.getName());
+				
+		int expectedHumans = 3;
+		if (OOPP.HASROBOT.equals(event.getOopp())) {
+		    if (StringUtils.isBlank(event.getOpp1())) {
+                invitedNames.add("robot-1");
+                expectedHumans--;
+            } else {
+                invitedNames.add(event.getOpp1());
+            }
+		    
+            if (StringUtils.isBlank(event.getOpp2())) {
+                invitedNames.add("robot-2");
+                expectedHumans--;
+            } else {
+                invitedNames.add(event.getOpp2());
+            }
+		} else {
+            invitedNames.add(event.getOpp1());
+            invitedNames.add(event.getOpp2());
+        }
+
+		final SepRoom room = new SepRoom(id, players, invitedNames, acceptedNames, settings, expectedHumans);
 		final int roomId = room.getId();
 		player.getWaitState()
 			.setSepRoomSel(roomId);

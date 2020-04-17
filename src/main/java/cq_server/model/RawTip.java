@@ -1,7 +1,9 @@
 package cq_server.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class RawTip {
 
 	@JsonProperty("question")
@@ -11,7 +13,6 @@ public final class RawTip {
 	private int answer;
 
 	public RawTip() {
-		// TODO Auto-generated constructor stub
 	}
 
 	public RawTip(final String question, final int answer) {

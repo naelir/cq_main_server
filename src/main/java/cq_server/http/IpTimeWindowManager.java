@@ -21,7 +21,10 @@ public class IpTimeWindowManager {
 	}
 
 	public synchronized void addIpRequest(final String ipAddress) {
-		final long epochSecond = LocalDateTime.now().atZone(ZoneId.systemDefault()).toEpochSecond();
+		final long epochSecond = LocalDateTime
+		        .now()
+		        .atZone(ZoneId.systemDefault())
+		        .toEpochSecond();
 		this.requestsPerIp.put(ipAddress, epochSecond);
 		final long epochMinute = epochSecond - (epochSecond % 60);
 		if (epochMinute > this.lastEpochMinute) {
@@ -44,6 +47,6 @@ public class IpTimeWindowManager {
 
 	public synchronized boolean ipAddressReachedLimit(final String ipAddress) {
 		final int amountRequests = this.requestsPerIp.get(ipAddress).size();
-		return (amountRequests > MAX_REQUEST_PER_IP_IN_WINDOW);
+		return amountRequests > MAX_REQUEST_PER_IP_IN_WINDOW;
 	}
 }

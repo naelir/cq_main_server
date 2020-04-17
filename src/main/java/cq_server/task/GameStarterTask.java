@@ -4,14 +4,19 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
+import org.apache.maven.shared.utils.StringUtils;
+
 import cq_server.factory.IGameFactory;
+import cq_server.factory.IPlayerFactory;
 import cq_server.game.Chat;
 import cq_server.game.Game;
 import cq_server.model.GameRoomType;
+import cq_server.model.OOPP;
 import cq_server.model.Page;
 import cq_server.model.Player;
 import cq_server.model.SepRoom;
 import cq_server.model.UserList;
+import cq_server.model.Player.Type;
 
 public class GameStarterTask implements Runnable {
 	private final UserList usersList;
@@ -26,6 +31,8 @@ public class GameStarterTask implements Runnable {
 
 	private final Map<Integer, Chat> chats;
 
+    private final IPlayerFactory playerFactory;
+
 	public GameStarterTask(final Builder builder) {
 		this.usersList = builder.usersList;
 		this.sepRooms = builder.sepRooms;
@@ -33,6 +40,7 @@ public class GameStarterTask implements Runnable {
 		this.games = builder.games;
 		this.gameFactory = builder.gameFactory;
 		this.chats = builder.chats;
+		this.playerFactory = builder.playerFactory;
 	}
 
 	@Override
@@ -57,9 +65,23 @@ public class GameStarterTask implements Runnable {
 		for (final Iterator<Entry<Integer, SepRoom>> iterator = this.sepRooms.entrySet().iterator(); iterator
 				.hasNext();) {
 			final SepRoom room = iterator.next().getValue();
+			Set<Player> players = room.getPlayers();
 			if (room.isFull()) {
+
+		        if (OOPP.HASROBOT.getValue() == room.getOopp()) {
+		            if (StringUtils.isBlank(room.getU2())) {
+		                final Player robot = this.playerFactory.createPlayer(Type.ROBOT, null,
+		                        String.format("robot-%d", 1));
+		                players.add(robot);
+		            }
+                    if (StringUtils.isBlank(room.getU3())) {
+		                final Player robot = this.playerFactory.createPlayer(Type.ROBOT, null,
+		                        String.format("robot-%d", 2));
+		                players.add(robot);
+		            }
+		        }
 				iterator.remove();
-				this.startGame(room.getPlayers(), GameRoomType.ROOM);
+				this.startGame(players, GameRoomType.ROOM);
 			}
 		}
 	}
@@ -85,6 +107,8 @@ public class GameStarterTask implements Runnable {
 		private IGameFactory gameFactory;
 
 		private Map<Integer, Chat> chats;
+
+        private IPlayerFactory playerFactory;
 
 		public GameStarterTask build() {
 			return new GameStarterTask(this);
@@ -119,5 +143,10 @@ public class GameStarterTask implements Runnable {
 			this.usersList = usersList;
 			return this;
 		}
+
+        public Builder setPlayerfactory(final IPlayerFactory playerFactory) {            
+            this.playerFactory = playerFactory;
+            return this;
+        }
 	}
 }

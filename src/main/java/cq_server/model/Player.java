@@ -47,7 +47,7 @@ public class Player {
 		this.activeChat = new ActiveChat(0);
 		this.loggedIn = false;
 		this.isListen = true;
-		this.mstate = new Integer(0);
+		this.mstate = 0;
 	}
 
 	@Override

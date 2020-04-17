@@ -2,6 +2,7 @@ package cq_server.test;
 
 import java.io.StringReader;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 
@@ -12,12 +13,73 @@ import javax.xml.bind.Unmarshaller;
 
 import org.junit.Test;
 
-import cq_server.event.*;
+import cq_server.event.AddSeparateRoomEvent;
+import cq_server.event.AnswerEvent;
+import cq_server.event.ChatAddUserEvent;
+import cq_server.event.ChatCloseEvent;
+import cq_server.event.ChatMessageEvent;
+import cq_server.event.CloseGameEvent;
+import cq_server.event.CmdChannel;
+import cq_server.event.ConnectionCheckEvent;
+import cq_server.event.DenySepRoomEvent;
+import cq_server.event.EnterRoomEvent;
+import cq_server.event.ExitRoomEvent;
+import cq_server.event.GetDataEvent;
+import cq_server.event.GetUserInfoEvent;
+import cq_server.event.ListenChannel;
+import cq_server.event.ListenEvent;
+import cq_server.event.LoginEvent;
+import cq_server.event.LogoutEvent;
+import cq_server.event.MessageEvent;
+import cq_server.event.ModFriendListEvent;
+import cq_server.event.RateQuestionEvent;
+import cq_server.event.ReadyEvent;
+import cq_server.event.SelectAreaEvent;
+import cq_server.event.SetActiveChatEvent;
+import cq_server.event.TipEvent;
+import cq_server.event.WebLoginEvent;
 import cq_server.factory.IdFactory;
 import cq_server.game.Chat;
 import cq_server.game.GameState;
-import cq_server.model.*;
+import cq_server.model.ActiveChat;
+import cq_server.model.AnswerResult;
+import cq_server.model.BaseChannel;
+import cq_server.model.ChatMsg;
+import cq_server.model.CmdAnswer;
+import cq_server.model.CmdSelect;
+import cq_server.model.CmdTip;
+import cq_server.model.ConnStatus;
+import cq_server.model.CountryMap;
+import cq_server.model.FriendList;
+import cq_server.model.FriendListChange;
+import cq_server.model.GameOver;
+import cq_server.model.GameRoom;
+import cq_server.model.GameRoomType;
+import cq_server.model.Message;
+import cq_server.model.MyData;
+import cq_server.model.NewMailFlag;
+import cq_server.model.NewReg;
+import cq_server.model.NoChat;
+import cq_server.model.OOPP;
+import cq_server.model.Player;
 import cq_server.model.Player.Type;
+import cq_server.model.Players;
+import cq_server.model.Question;
+import cq_server.model.RawQuestion;
+import cq_server.model.Reconnect;
+import cq_server.model.Rights;
+import cq_server.model.RoomSettings;
+import cq_server.model.Rules;
+import cq_server.model.SepRoom;
+import cq_server.model.ShortGameRoom;
+import cq_server.model.Substitute;
+import cq_server.model.TipInfo;
+import cq_server.model.TipQuestion;
+import cq_server.model.TipResult;
+import cq_server.model.UserInfo;
+import cq_server.model.UserList;
+import cq_server.model.WaitState;
+import cq_server.model.WinnerSelect;
 
 public class JaxbTest {
 	@Test
@@ -96,7 +158,8 @@ public class JaxbTest {
 			.setRules(Rules.DUEL)
 			.build(); 
 		//@formatter:on
-		marshaller.marshal(new SepRoom(1, Collections.emptyList(), Collections.emptyList(), roomSettings), System.out);
+        marshaller.marshal(new SepRoom(1, Collections.emptyList(), Arrays.asList("1", "2", "3"),
+                Collections.emptyList(), roomSettings, 3), System.out);
 		System.out.println();
 		final UserList userList = new UserList();
 		userList.add(new Player(1, Type.ROBOT, null, ""));

@@ -37,8 +37,8 @@ public class IpFilter implements Filter {
 		final String ip = servletRequest.getRemoteAddr();
 		if (servletResponse instanceof HttpServletResponse) {
 			final HttpServletResponse httpservletResponse = (HttpServletResponse) servletResponse;
-			final boolean isIPAllowed = !this.bannedIps.contains(ip);
-			if (!isIPAllowed) {
+			final boolean isBanned = this.bannedIps.contains(ip);
+			if (isBanned) {
 				httpservletResponse.sendError(HttpServletResponse.SC_NOT_FOUND);
 				LOG.info("ip {} filtered", ip);
 			} else

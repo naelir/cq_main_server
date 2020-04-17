@@ -60,6 +60,8 @@ public class CommandsTest {
 
 	@Test
 	public void addSeparateRoom() {
+        this.loggedPlayers.put(1, new Player(1, Player.Type.ROBOT, "", "opponent-1"));
+        this.loggedPlayers.put(2, new Player(2, Player.Type.ROBOT, "", "opponent-2"));
 		final AddSeparateRoomEvent event = new AddSeparateRoomEvent(0, CountryMap.BG, "opponent-1", "opponent-2",
 				OOPP.ANYONE.getValue(), Rules.LONG.getValue(), SubRules.LASTMANSTANDING.getValue(), 0, 0);
 		final ICommand<AddSeparateRoomEvent> command = new AddSepRoomCommand(this.builder);
