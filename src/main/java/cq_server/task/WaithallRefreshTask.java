@@ -9,7 +9,16 @@ import java.util.stream.Collectors;
 
 import cq_server.game.Chat;
 import cq_server.handler.IOutEventHandler;
-import cq_server.model.*;
+import cq_server.model.ActiveChat;
+import cq_server.model.ChatMsg;
+import cq_server.model.GameRoom;
+import cq_server.model.NoChat;
+import cq_server.model.OutEvent;
+import cq_server.model.Page;
+import cq_server.model.Player;
+import cq_server.model.SepRoom;
+import cq_server.model.UserList;
+import cq_server.model.WaitState;
 
 public final class WaithallRefreshTask {
 	private final Map<Integer, Player> loggedPlayers;
@@ -43,7 +52,6 @@ public final class WaithallRefreshTask {
 
 	public void run(final Collection<Player> players) {
 		for (final Player player : players) {
-			player.setListen(false);
 			final List<Object> state = new ArrayList<>();
 			state.add(player.getRights());
 			for (final GameRoom gameRoom : this.gameRooms.values())
@@ -70,9 +78,12 @@ public final class WaithallRefreshTask {
 			final NoChat noChat = player.getNoChat();
 			if (noChat != null)
 				state.add(noChat);
-			player.setMstate(newMstate);
-			player.setUlState(this.usersList.getUlState());
-			this.outEventHandler.onOutEvent(new OutEvent(OutEvent.Kind.LISTEN, player, state));
+            if (Page.WAITHALL.equals(player.getPage())) {
+                player.setListen(false);
+                player.setMstate(newMstate);
+                player.setUlState(this.usersList.getUlState());
+                this.outEventHandler.onOutEvent(new OutEvent(OutEvent.Kind.LISTEN, player, state));
+            }
 		}
 	}
 

@@ -92,7 +92,7 @@ public class Player {
 		return this.noChat;
 	}
 
-	public Page getPage() {
+	public synchronized Page getPage() {
 		return this.page;
 	}
 
@@ -172,7 +172,7 @@ public class Player {
 		this.noChat = noChat;
 	}
 
-	public void setPage(final Page page) {
+	public synchronized void setPage(final Page page) {
 		this.page = page;
 		this.waitState.setSepRoomSel(0);
 		this.activeChat.setId(0);
