@@ -20,10 +20,11 @@ import javax.xml.bind.JAXBException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.Banner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.embedded.FilterRegistrationBean;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Scope;
@@ -181,7 +182,7 @@ public class Application {
 		final Class<Application> mainClass = Application.class;
 		final SpringApplication application = new SpringApplication(mainClass);
 		application.setBannerMode(Banner.Mode.OFF);
-		application.setWebEnvironment(true);
+		application.setWebApplicationType(WebApplicationType.SERVLET);
 		final ConfigurableApplicationContext context = application.run(args);
 		LOG.info("cq server starting");
 		try {
